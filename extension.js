@@ -191,7 +191,7 @@ export default class HardDiskLEDExtension extends Extension {
         });
 
         this.layoutManager = new St.BoxLayout({
-            vertical: false,
+            orientation: Clutter.Orientation.HORIZONTAL,
             style_class: 'harddiskled-container'
         });
 
