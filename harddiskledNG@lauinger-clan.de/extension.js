@@ -126,16 +126,16 @@ export default class HardDiskLEDNGExtension extends Extension {
 
         let unit = 0;
         while (amount >= 1000) {
-            // 1M=1024K, 1MB/s=1000MB/s
+            // decimal units: 1K/s = 1000B/s, 1M/s = 1000K/s
             amount /= 1000;
             ++unit;
         }
 
         if (amount >= 100)
-            // 100MB 100KB 200KB
+            // 100K/s, 250M/s
             digits = 0;
         else if (amount >= 10)
-            // 10MB 10.2
+            // 10.2K/s, 25.6M/s
             digits = 1;
         else digits = 2;
         return String(amount.toFixed(digits)) + speedMap[unit];
