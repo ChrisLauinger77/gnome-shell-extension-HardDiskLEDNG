@@ -17,7 +17,7 @@
         "io-speed"
     ],
     "author": "Chris Lauinger",
-    "license": "GPL-3.0",
+    "license": "GPL-3.0-only",
     "bugs": {
         "url": "https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG/issues"
     },
