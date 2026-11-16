@@ -58,7 +58,8 @@ future changes to the schema ID or path as settings migrations.
   counter resets, and device additions/removals.
 - `test/display.test.js`: runtime refresh, display-mode, panel-button, and
   click-gesture coverage with stubbed Shell actors, including cancellation,
-  overlapping reads, and disable/re-enable while a read is pending.
+  overlapping reads, read failures, and disable/re-enable while a read is
+  pending.
 - `test/diskStatsReader.test.js`: asynchronous Gio read, enumeration, cleanup,
   and cancellation coverage.
 - `test/tooling.test.js`: Node test-runner coverage for version updates,
@@ -158,6 +159,10 @@ Notes:
   read owns a `Gio.Cancellable`; cancel it in `disable()`. Ignore cancelled
   completions and keep old reads from clearing a new session's cancellable.
   Timer callbacks return `GLib.SOURCE_CONTINUE`, rather than a Promise.
+- A failed read sets the last speed to `null`: the LED turns off, the label
+  shows `--` until a read succeeds, and only the first failure of a series
+  is logged with `console.error()`. Do not put raw error messages in the
+  panel label.
 - Display-mode changes redraw the current sample without reading disk counters
   or advancing the sampler's timestamp.
 - The eight supported display modes are indexed 0 through 7. Clicking the

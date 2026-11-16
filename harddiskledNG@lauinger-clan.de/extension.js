@@ -101,17 +101,23 @@ export default class HardDiskLEDNGExtension extends Extension {
             this.updateDisplay(speed);
             this.lastSpeed = speed;
         } catch (error) {
-            if (!cancellable.is_cancelled()) this.ioSpeed.set_text(error.message);
+            if (cancellable.is_cancelled()) return;
+
+            // the timer retries every refresh, so only log the first failure of a series
+            if (this.lastSpeed !== null) console.error(`${this.metadata.name}: failed to read disk statistics`, error);
+            this.lastSpeed = null;
+            this.updateDisplay(null);
         } finally {
             if (this.readCancellable === cancellable) this.readCancellable = null;
         }
     }
 
     updateDisplay(speed) {
+        // a null speed means the last disk read failed
         this.updateVisibility();
         this.ioSpeedIcon.icon_size = [1, 3, 7].includes(this.mode) ? 12 : 8;
-        this.ioSpeedIcon.opacity = speed > this.ledMinThreshold ? 255 : 0;
-        this.ioSpeed.set_text(this.speedToString(speed));
+        this.ioSpeedIcon.opacity = speed !== null && speed > this.ledMinThreshold ? 255 : 0;
+        this.ioSpeed.set_text(speed === null ? "--" : this.speedToString(speed));
     }
 
     speedToString(amount) {

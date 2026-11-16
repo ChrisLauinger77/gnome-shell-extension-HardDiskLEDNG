@@ -89,6 +89,7 @@ function createIndicator(t) {
     const handlers = new Map();
     const requests = [];
     const statusArea = [];
+    const errors = [];
     const settings = {
         get_int: (key) => (key === "defaultmode" ? -1 : mode),
         get_string: () => "#00ff00",
@@ -121,6 +122,7 @@ function createIndicator(t) {
                 }
             },
             DiskStatsSampler,
+            console: { error: (...args) => errors.push(args) },
             readDiskStats: (cancellable) =>
                 new Promise((resolve, reject) => {
                     requests.push({ cancellable, resolve, reject });
@@ -167,6 +169,7 @@ function createIndicator(t) {
         requests,
         settings,
         statusArea,
+        errors,
         preferencesOpened: () => preferencesOpened,
         click(button) {
             const gesture = indicator.button.actions.find((action) => action.required_button === button);
@@ -324,14 +327,32 @@ test("a cancelled read cannot update a newly enabled instance or clear its pendi
     assert.equal(fixture.indicator.ioSpeed.text, "512K/s");
 });
 
-test("failed reads are reported and a later tick can retry", async (t) => {
+test("failed reads turn the LED off, log once per series, and a later tick can retry", async (t) => {
     const fixture = createIndicator(t);
-    await fixture.fail(0);
-    assert.equal(fixture.indicator.ioSpeed.text, "disk read failed");
-    assert.equal(fixture.indicator.readCancellable, null);
+    const { indicator } = fixture;
+    await fixture.finish(0, 1000, 0);
     fixture.tick();
-    await fixture.finish(1, 1000, 2);
-    assert.equal(fixture.indicator.ioSpeed.text, "0B/s");
+    await fixture.finish(1, 3000, 2);
+    assert.equal(indicator.ioSpeedIcon.opacity, 255);
+    fixture.tick();
+    await fixture.fail(2);
+    assert.equal(indicator.ioSpeed.text, "--");
+    assert.equal(indicator.ioSpeedIcon.opacity, 0);
+    assert.equal(indicator.readCancellable, null);
+    assert.equal(fixture.errors.length, 1);
+    assert.match(fixture.errors[0][0], /^Harddisk LED NG: /);
+    assert.equal(fixture.errors[0][1].message, "disk read failed");
+    fixture.tick();
+    await fixture.fail(3);
+    assert.equal(fixture.errors.length, 1);
+    fixture.settings.set_int("mode", 1);
+    assert.equal(indicator.ioSpeed.text, "--");
+    fixture.tick();
+    await fixture.finish(4, 7000, 6);
+    assert.equal(indicator.ioSpeed.text, "512K/s");
+    fixture.tick();
+    await fixture.fail(5);
+    assert.equal(fixture.errors.length, 2);
 });
 
 test("cancellation errors arriving after disable do not update destroyed widgets", async (t) => {
@@ -340,4 +361,5 @@ test("cancellation errors arriving after disable do not update destroyed widgets
     await fixture.fail(0);
     assert.equal(fixture.indicator.ioSpeed, null);
     assert.equal(fixture.indicator.readCancellable, null);
+    assert.equal(fixture.errors.length, 0);
 });
