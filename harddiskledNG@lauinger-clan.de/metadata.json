@@ -4,7 +4,7 @@
     "settings-schema": "org.gnome.shell.extensions.HardDiskLEDNG",
     "gettext-domain": "harddiskledNG@lauinger-clan.de",
     "original-author": "bijignom",
-    "shell-version": ["48", "49", "50", "51"],
+    "shell-version": ["49", "50", "51"],
     "url": "https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG",
     "uuid": "harddiskledNG@lauinger-clan.de",
     "donations": {

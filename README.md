@@ -5,7 +5,7 @@
 ![Gnome Extensions Downloads](https://img.shields.io/gnome-extensions/dt/harddiskledNG@lauinger-clan.de) ![GNOME Shell](https://img.shields.io/badge/GNOME-48%20--%2051-blue?logo=gnome&logoColor=white) ![GitHub License](https://img.shields.io/github/license/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG)
 
 </div>
-GNOME Shell extension that shows harddisk activity with IO speed and an LED. Click the indicator to cycle through display modes.
+GNOME Shell extension that shows harddisk activity with IO speed and an LED. Left-click the indicator to cycle forward through display modes, right-click to cycle backward; middle-click opens the preferences.
 
 Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/).
 

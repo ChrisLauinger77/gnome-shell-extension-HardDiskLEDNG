@@ -1,6 +1,7 @@
 import { default as Clutter } from "gi://Clutter";
 import { default as St } from "gi://St";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import { default as Gio } from "gi://Gio";
 import GLib from "gi://GLib";
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
@@ -26,13 +27,28 @@ export default class HardDiskLEDNGExtension extends Extension {
     ioSpeedStaticIcon = null;
     ioSpeedIcon = null;
 
-    changeMode() {
-        let mode = this.mode + 1;
-        if (mode > 7) {
-            mode = 0;
-        }
+    changeMode(step) {
+        // step forward (1) or backward (-1) through the eight modes, wrapping at both ends
+        const mode = (this.mode + step + 8) % 8;
         // the 'changed::mode' handler updates this.mode and refreshes the view
         this.settings.set_int("mode", mode);
+    }
+
+    addClickGestures() {
+        // left click cycles forward, right click backward, middle click opens the preferences
+        const actions = [
+            [Clutter.BUTTON_PRIMARY, () => this.changeMode(1)],
+            [Clutter.BUTTON_MIDDLE, () => this.openPreferences()],
+            [Clutter.BUTTON_SECONDARY, () => this.changeMode(-1)],
+        ];
+        for (const [button, action] of actions) {
+            const gesture = new Clutter.ClickGesture({
+                required_button: button,
+                recognize_on_press: true,
+            });
+            gesture.connect("recognize", action);
+            this.button.add_action(gesture);
+        }
     }
 
     onModeChanged() {
@@ -136,14 +152,8 @@ export default class HardDiskLEDNGExtension extends Extension {
             this.mode = 0;
         }
 
-        this.button = new St.Button({
-            style_class: "panel-button",
-            reactive: true,
-            can_focus: true,
-            x_expand: true,
-            y_expand: false,
-            track_hover: true,
-        });
+        // menu-less panel button, clicks are handled by addClickGestures()
+        this.button = new PanelMenu.Button(0.0, this.metadata.name, true);
 
         this.layoutManager = new St.BoxLayout({
             orientation: Clutter.Orientation.HORIZONTAL,
@@ -173,11 +183,10 @@ export default class HardDiskLEDNGExtension extends Extension {
         this.layoutManager.add_child(this.ioSpeedStaticIcon);
         this.layoutManager.add_child(this.ioSpeedIcon);
         this.layoutManager.add_child(this.ioSpeed);
-        this.button.connect("button-press-event", this.changeMode.bind(this));
+        this.button.add_child(this.layoutManager);
+        this.addClickGestures();
 
-        this.button.set_child(this.layoutManager);
-
-        Main.panel._rightBox.insert_child_at_index(this.button, 0);
+        Main.panel.addToStatusArea(this.uuid, this.button, 0, "right");
 
         // react to mode changes from the preferences dialog (and from clicking)
         this.settingsChangedId = this.settings.connect("changed::mode", this.onModeChanged.bind(this));
@@ -210,7 +219,7 @@ export default class HardDiskLEDNGExtension extends Extension {
             this.settings.disconnect(this.colorChangedId);
             this.colorChangedId = null;
         }
-        Main.panel._rightBox.remove_child(this.button);
+        // destroying the button also removes it from the panel's status area
         this.button.destroy();
         this.settings = null;
         this.button = null;

@@ -12,6 +12,7 @@ class Actor {
     visible = true;
     destroyed = false;
     children = [];
+    actions = [];
 
     constructor(properties) {
         Object.assign(this, properties);
@@ -29,8 +30,8 @@ class Actor {
     add_child(child) {
         this.children.push(child);
     }
-    set_child(child) {
-        this.children = [child];
+    add_action(action) {
+        this.actions.push(action);
     }
     connect() {
         return 1;
@@ -38,6 +39,22 @@ class Actor {
     destroy() {
         this.destroyed = true;
         for (const child of this.children) child.destroy();
+    }
+}
+
+class PanelButton extends Actor {
+    constructor(menuAlignment, nameText, dontCreateMenu) {
+        super({ menuAlignment, nameText, dontCreateMenu });
+    }
+}
+
+class ClickGesture {
+    constructor(properties) {
+        Object.assign(this, properties);
+    }
+    connect(signal, callback) {
+        this[signal] = callback;
+        return 1;
     }
 }
 
@@ -68,8 +85,10 @@ function createIndicator(t) {
     let mode = 0;
     let timer = null;
     let signalId = 0;
+    let preferencesOpened = 0;
     const handlers = new Map();
     const requests = [];
+    const statusArea = [];
     const settings = {
         get_int: (key) => (key === "defaultmode" ? -1 : mode),
         get_string: () => "#00ff00",
@@ -92,8 +111,13 @@ function createIndicator(t) {
         {
             Extension: class {
                 path = "/test/extension";
+                uuid = "harddiskledNG@lauinger-clan.de";
+                metadata = { name: "Harddisk LED NG" };
                 getSettings() {
                     return settings;
+                }
+                openPreferences() {
+                    preferencesOpened++;
                 }
             },
             DiskStatsSampler,
@@ -102,9 +126,23 @@ function createIndicator(t) {
                     requests.push({ cancellable, resolve, reject });
                 }),
             Gio: { Cancellable, icon_new_for_string: (path) => path },
-            St: { Button: Actor, BoxLayout: Actor, Label, Icon },
-            Clutter: { ActorAlign: { CENTER: 0 }, Orientation: { HORIZONTAL: 0 } },
-            Main: { panel: { _rightBox: { insert_child_at_index() {}, remove_child() {} } } },
+            St: { BoxLayout: Actor, Label, Icon },
+            Clutter: {
+                ActorAlign: { CENTER: 0 },
+                Orientation: { HORIZONTAL: 0 },
+                BUTTON_PRIMARY: 1,
+                BUTTON_MIDDLE: 2,
+                BUTTON_SECONDARY: 3,
+                ClickGesture,
+            },
+            PanelMenu: { Button: PanelButton },
+            Main: {
+                panel: {
+                    addToStatusArea(role, indicator, position, box) {
+                        statusArea.push({ role, indicator, position, box });
+                    },
+                },
+            },
             GLib: {
                 PRIORITY_DEFAULT: 0,
                 SOURCE_CONTINUE: true,
@@ -128,6 +166,13 @@ function createIndicator(t) {
         indicator,
         requests,
         settings,
+        statusArea,
+        preferencesOpened: () => preferencesOpened,
+        click(button) {
+            const gesture = indicator.button.actions.find((action) => action.required_button === button);
+            assert.equal(gesture.recognize_on_press, true);
+            gesture.recognize(gesture);
+        },
         tick() {
             assert.notEqual(timer, null);
             return timer();
@@ -204,6 +249,39 @@ test("changing display mode reuses the current speed without advancing the disk 
     assert.equal(fixture.requests.length, 2);
     assert.equal(sampler.previousTime, 2);
     assert.equal(sampler.previousCounters, previousCounters);
+});
+
+test("the indicator is a named, menu-less status area button", (t) => {
+    const { indicator, statusArea } = createIndicator(t);
+    assert.ok(indicator.button instanceof PanelButton);
+    assert.equal(indicator.button.nameText, "Harddisk LED NG");
+    assert.equal(indicator.button.dontCreateMenu, true);
+    assert.deepEqual(statusArea, [
+        { role: "harddiskledNG@lauinger-clan.de", indicator: indicator.button, position: 0, box: "right" },
+    ]);
+    const button = indicator.button;
+    indicator.disable();
+    assert.equal(button.destroyed, true);
+});
+
+test("left clicks cycle forward, right clicks backward, and a middle click opens the preferences", (t) => {
+    const fixture = createIndicator(t);
+    const { indicator, settings } = fixture;
+    assert.equal(indicator.button.actions.length, 3);
+    fixture.click(1);
+    fixture.click(1);
+    assert.equal(indicator.mode, 2);
+    fixture.click(3);
+    assert.equal(indicator.mode, 1);
+    fixture.click(2);
+    assert.equal(indicator.mode, 1);
+    assert.equal(fixture.preferencesOpened(), 1);
+    settings.set_int("mode", 7);
+    fixture.click(1);
+    assert.equal(indicator.mode, 0);
+    fixture.click(3);
+    assert.equal(indicator.mode, 7);
+    assert.equal(fixture.requests.length, 1);
 });
 
 test("timer ticks do not start overlapping disk reads", async (t) => {

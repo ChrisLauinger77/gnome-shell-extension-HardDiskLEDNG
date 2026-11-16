@@ -6,13 +6,27 @@ Guidance for coding agents working in this repository.
 
 Harddisk LED NG is a GNOME Shell extension that reads disk activity from
 `/proc/diskstats` and displays IO speed, an activity LED, and an optional disk
-icon in the top panel. Clicking the indicator cycles through eight display
-modes. Preferences control the active mode, default mode, and LED color.
+icon in the top panel. Left-clicking the indicator cycles forward through
+eight display modes, right-clicking cycles backward, and middle-clicking
+opens the preferences. Preferences
+control the active mode, default mode, and LED color.
 
 The extension UUID is `harddiskledNG@lauinger-clan.de`; extension source lives
-inside the directory with that exact name. The `shell-version` field in
-`harddiskledNG@lauinger-clan.de/metadata.json` lists the supported GNOME Shell
-versions, currently 48 through 51 inclusive.
+inside the directory with that exact name. The extension supports GNOME Shell
+48 through 51 inclusive. The `shell-version` field in
+`harddiskledNG@lauinger-clan.de/metadata.json` covers only the release in the
+source tree, currently 49 through 51; GNOME Shell 48 is served by the
+published `v51.0.0` release.
+
+The GNOME Shell compatibility badge in `README.md` lists every GNOME Shell
+major version supported by any Harddisk LED NG release. It currently covers
+GNOME 48 through 51 inclusive. The `shell-version` field in
+`harddiskledNG@lauinger-clan.de/metadata.json` covers only the current
+extension release. When updating the README badge, include GNOME versions that
+older extension releases support, even if the current `shell-version` list
+omits them. Tags before `v51.0.0` are releases of the upstream Harddisk LED
+extension (UUID `harddiskled@bijidroid.gmail.com`) and do not count toward the
+badge.
 
 The fork uses GSettings schema ID `org.gnome.shell.extensions.HardDiskLEDNG`
 and path `/org/gnome/shell/extensions/HardDiskLEDNG/`. Keep metadata's
@@ -42,9 +56,9 @@ future changes to the schema ID or path as settings migrations.
   LED artwork loaded by the panel's `St.Icon`.
 - `test/diskStats.test.js`: coverage for disk selection, elapsed sampling time,
   counter resets, and device additions/removals.
-- `test/display.test.js`: runtime refresh and display-mode coverage with
-  stubbed Shell actors, including cancellation, overlapping reads, and
-  disable/re-enable while a read is pending.
+- `test/display.test.js`: runtime refresh, display-mode, panel-button, and
+  click-gesture coverage with stubbed Shell actors, including cancellation,
+  overlapping reads, and disable/re-enable while a read is pending.
 - `test/diskStatsReader.test.js`: asynchronous Gio read, enumeration, cleanup,
   and cancellation coverage.
 - `test/tooling.test.js`: Node test-runner coverage for version updates,
@@ -151,7 +165,8 @@ Notes:
   the view. Preserve this flow so preferences and panel clicks stay in sync.
 - `defaultmode` uses `-1` for "None", which preserves the last active mode.
   The preferences selector maps index 0 to `-1` and subsequent indices to the
-  corresponding display mode.
+  corresponding display mode. It is applied on every `enable()`, including
+  after a screen unlock; this is intended behavior.
 - LED color is persisted as a CSS color string. Preserve validation before
   using it in the indicator's inline style and keep the reset action tied to
   the schema default.
@@ -161,7 +176,12 @@ Notes:
 - Preferences keep a settings reference for the window lifetime and disconnect
   settings-change handlers when the associated widgets are destroyed. Preserve
   this ownership when adding bindings.
-- The panel indicator uses `Main.panel._rightBox`; treat changes to this Shell
+- The panel indicator is a menu-less `PanelMenu.Button` added with
+  `Main.panel.addToStatusArea()` under the extension UUID; destroying it in
+  `disable()` also removes the status-area entry. Handle clicks with
+  `Clutter.ClickGesture` actions (primary cycles the mode forward, secondary
+  backward, middle opens the preferences) rather than connecting raw event signals such as
+  `button-press-event`, which GNOME 51 deprecates. Treat changes to this Shell
   integration as GNOME-version-sensitive.
 
 ## Validation Checklist
