@@ -1,0 +1,172 @@
+# AGENTS.md
+
+Guidance for coding agents working in this repository.
+
+## Project Overview
+
+Harddisk LED NG is a GNOME Shell extension that reads disk activity from
+`/proc/diskstats` and displays IO speed, an activity LED, and an optional disk
+icon in the top panel. Clicking the indicator cycles through eight display
+modes. Preferences control the active mode, default mode, and LED color.
+
+The extension UUID is `harddiskledNG@lauinger-clan.de`; extension source lives
+inside the directory with that exact name. The `shell-version` field in
+`harddiskledNG@lauinger-clan.de/metadata.json` lists the supported GNOME Shell
+versions, currently 48 through 51 inclusive.
+
+The fork preserves the original GSettings schema ID
+`org.gnome.shell.extensions.harddiskled` and path
+`/org/gnome/shell/extensions/harddiskled/` so existing preferences remain
+available. Keep metadata's `settings-schema` consistent with the schema XML;
+treat changes to the schema ID or path as settings migrations.
+
+## Repository Layout
+
+- `harddiskledNG@lauinger-clan.de/extension.js`: GNOME Shell runtime code,
+  disk-stat parsing, IO speed formatting, panel indicator, settings watchers,
+  and periodic refresh.
+- `harddiskledNG@lauinger-clan.de/prefs.js`: preferences UI logic using
+  Gtk/Gdk, settings bindings, and LED color conversion.
+- `harddiskledNG@lauinger-clan.de/ui/prefs.ui`: Gtk Builder UI using libadwaita
+  preferences pages, mode selectors, and the LED color picker.
+- `harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml`:
+  GSettings schema. Keep keys in sync with `extension.js`, `prefs.js`, and the
+  preferences UI.
+- `harddiskledNG@lauinger-clan.de/metadata.json`: extension metadata,
+  supported Shell versions, release version, gettext domain, and schema ID.
+- `harddiskledNG@lauinger-clan.de/stylesheet.css`: panel indicator styling.
+- `harddiskledNG@lauinger-clan.de/icons/`: bundled disk artwork.
+- `test/tooling.test.js`: Node test-runner coverage for version updates,
+  staged-version hooks, packaging paths, and command failure handling. Tests
+  use temporary checkouts and mocked GNOME commands.
+- `po/`: gettext template `harddiskledNG.pot` and any translations.
+- `docs/`: project screenshots.
+- `.githooks/`: optional Git hook and shared version helpers that synchronize
+  npm versions with metadata's `version-name`.
+- `harddiskledng.sh`: root helper for packaging, installing, uploading,
+  translation updates, version checks, and hook setup. Keep development
+  commands in this script; the former `bin/` scripts have been removed.
+- `CLAUDE.md`: forwards coding-agent guidance to this file.
+
+## Useful Commands
+
+- `./harddiskledng.sh install-dependencies`: install JavaScript development
+  dependencies with npm.
+- `npm run lint`: run ESLint across the repository.
+- `npm test`: run the tooling regression tests.
+- `./harddiskledng.sh zip`: build
+  `harddiskledNG@lauinger-clan.de.shell-extension.zip` at the repository root.
+- `./harddiskledng.sh pack [output-directory]`: build the same archive into an
+  optional output directory. Relative output paths resolve from the repository
+  root.
+- `./harddiskledng.sh install`: rebuild, install, and enable the extension
+  locally.
+- `./harddiskledng.sh upload`: rebuild and upload the archive to
+  extensions.gnome.org using the credentials configured in the script.
+- `./harddiskledng.sh translate`: update `po/harddiskledNG.pot` and merge
+  existing `.po` files after user-visible string changes.
+- `./harddiskledng.sh cleanup`: remove the archive at the repository root.
+- `./harddiskledng.sh check-version` / `update-version`: check or synchronize
+  the npm versions against metadata's `version-name`.
+- `./harddiskledng.sh setup-hooks`: enable the optional hook in `.githooks/`.
+- `gnome-extensions prefs harddiskledNG@lauinger-clan.de`: open preferences
+  after installing the extension.
+
+Run `./harddiskledng.sh install-dependencies` after pulling or rebasing remote
+changes that modify `package-lock.json`, particularly Renovate updates.
+
+Notes:
+
+- Packaging requires `gnome-extensions`; translation updates require gettext
+  tools such as `xgettext`, `msgmerge`, and `msgattrib`.
+- Version commands require `jq`; version updates also require Node.js/npm.
+  The tooling tests require Node.js/npm, Bash, Git, and `jq`.
+- Tooling tests mock installation and upload commands. Passing them does not
+  verify the live GNOME Shell UI.
+- Packaging includes translation catalogs only when `.po` files exist.
+
+## Coding Conventions
+
+- Use `$review-gnome-shell-extension` when changing runtime, preferences,
+  metadata, schema, packaging, or user-data behavior that may affect
+  extensions.gnome.org review.
+- Use modern GJS ES modules and imports consistent with the existing files.
+- Keep Gtk/Gdk/Adw imports in the preferences process and Shell-only imports
+  such as St/Clutter in the runtime process.
+- Keep settings schema keys, display-mode indices, UI widget IDs, and
+  preferences bindings aligned.
+- Preserve existing settings IDs and storage paths unless the task includes a
+  migration.
+- Mark user-visible Gtk Builder strings as translatable and add gettext
+  wrapping for new JavaScript UI strings. Keep the gettext domain consistent
+  across metadata, the schema, and preferences.
+- Keep changes scoped. Avoid unrelated runtime cleanup because GNOME Shell
+  extension regressions can be hard to diagnose.
+- Follow `.editorconfig` and `.prettierrc`: JavaScript, CSS, and JSON use
+  four-space indentation; other file types default to two spaces. JavaScript
+  uses double quotes and semicolons.
+
+## Runtime Behavior To Handle Carefully
+
+- `extension.js` refreshes disk statistics with a repeating GLib timeout,
+  currently every two seconds. Remove the timeout, disconnect settings
+  signals, destroy the panel button and its children, and clear references in
+  `disable()`.
+- Runtime objects, timers, and settings connections belong to `enable()` and
+  must be recreated cleanly when the extension is enabled again.
+- Disk speed derives from differences between cumulative sector counts, the
+  refresh interval, and a 512-byte sector conversion. Device filtering affects
+  which disks and partitions contribute to the total; changes can cause
+  double counting or omit activity.
+- The eight supported display modes are indexed 0 through 7. Clicking the
+  indicator updates the `mode` setting; the settings-change handler updates
+  the view. Preserve this flow so preferences and panel clicks stay in sync.
+- `defaultmode` uses `-1` for "None", which preserves the last active mode.
+  The preferences selector maps index 0 to `-1` and subsequent indices to the
+  corresponding display mode.
+- LED color is persisted as a CSS color string. Preserve validation before
+  using it in the indicator's inline style and keep the reset action tied to
+  the schema default.
+- Preferences keep a settings reference for the window lifetime and disconnect
+  settings-change handlers when the associated widgets are destroyed. Preserve
+  this ownership when adding bindings.
+- The panel indicator uses `Main.panel._rightBox`; treat changes to this Shell
+  integration as GNOME-version-sensitive.
+
+## Validation Checklist
+
+Before finishing changes, run the validations that match the edit:
+
+- JavaScript changes: `npm run lint`.
+- Helper script, version logic, or hook changes: run or extend `npm test` and
+  run `./harddiskledng.sh check-version`.
+- Schema changes: run
+  `glib-compile-schemas --strict --dry-run harddiskledNG@lauinger-clan.de/schemas`
+  and check that metadata's schema ID resolves from the compiled schema.
+- Schema, metadata, packaging, icon, UI, or translation changes:
+  `./harddiskledng.sh zip`. Inspect the archive for runtime assets, schema XML,
+  and the license; exclude development scripts, npm dependencies, and source
+  `.po`/`.pot` catalogs.
+- User-visible strings: `./harddiskledng.sh translate`.
+- Runtime or preferences changes: verify enable/disable cycles, display-mode
+  changes, default-mode behavior, and LED color updates in a supported GNOME
+  Shell session. State clearly when live UI verification was unavailable.
+
+If a required GNOME or gettext command is unavailable in the environment,
+state that clearly in the final response.
+
+## Release Notes For Agents
+
+- The release version is `version-name` in `metadata.json`; numeric `version`
+  stays at the placeholder `999`. `package.json`'s version and both root
+  version fields in `package-lock.json` must match `version-name`, normalized
+  to `major.minor.patch`.
+- `./harddiskledng.sh update-version` synchronizes the npm files. The optional
+  pre-commit hook validates staged metadata and npm files, so stage all changed
+  version files together after synchronizing them.
+- The release artifact name is
+  `harddiskledNG@lauinger-clan.de.shell-extension.zip`.
+- The root helper rebuilds the archive before installation or upload and
+  stops when a command fails. Preserve these guarantees when changing it.
+- Do not commit generated extension archives or `gschemas.compiled` files
+  unless the maintainer explicitly requests it.

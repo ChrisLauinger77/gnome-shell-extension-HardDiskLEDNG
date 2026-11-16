@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="harddiskled@bijidroid.gmail.com">
-  <schema path="/org/gnome/shell/extensions/harddiskled/" id="org.gnome.shell.extensions.harddiskled">
+<schemalist gettext-domain="harddiskledNG@lauinger-clan.de">
+  <schema path="/org/gnome/shell/extensions/HardDiskLEDNG/" id="org.gnome.shell.extensions.HardDiskLEDNG">
       <key name="mode" type="i">
         <range min="0" max="10" />
         <default>0</default>
