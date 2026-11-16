@@ -15,6 +15,12 @@ Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/)
   </a>
 </p>
 
+## Screenshots
+
+#### Icon and Settings
+
+![screenshot: quick settings](docs/screenshot.png)
+
 ## Development
 
 Extension sources live in `harddiskledNG@lauinger-clan.de/`.
