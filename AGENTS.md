@@ -144,10 +144,10 @@ Notes:
 
 ## Runtime Behavior To Handle Carefully
 
-- `extension.js` refreshes disk statistics with a repeating GLib timeout,
-  currently every two seconds. Remove the timeout, disconnect settings
-  signals, destroy the panel button and its children, and clear references in
-  `disable()`.
+- `extension.js` refreshes disk statistics with a repeating
+  `GLib.timeout_add_seconds()` source, currently every two seconds. Remove the
+  timeout, disconnect settings signals, destroy the panel button and its
+  children, and clear references in `disable()`.
 - Runtime objects, timers, and settings connections belong to `enable()` and
   must be recreated cleanly when the extension is enabled again.
 - Whole physical disks are selected through `/sys/block`; virtual block

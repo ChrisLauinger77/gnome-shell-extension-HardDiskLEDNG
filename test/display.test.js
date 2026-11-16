@@ -149,7 +149,8 @@ function createIndicator(t) {
                 PRIORITY_DEFAULT: 0,
                 SOURCE_CONTINUE: true,
                 get_monotonic_time: () => time * 1000000,
-                timeout_add(_priority, _interval, callback) {
+                timeout_add_seconds(_priority, interval, callback) {
+                    assert.equal(interval, 2);
                     timer = callback;
                     return 1;
                 },

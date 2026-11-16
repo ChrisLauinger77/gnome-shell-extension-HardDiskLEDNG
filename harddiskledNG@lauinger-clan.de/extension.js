@@ -21,7 +21,7 @@ const MODES = [
 ];
 
 export default class HardDiskLEDNGExtension extends Extension {
-    refreshTime = 2.0; // in seconds
+    refreshTime = 2; // in seconds
 
     ledMinThreshold = 100000;
 
@@ -198,7 +198,8 @@ export default class HardDiskLEDNGExtension extends Extension {
 
         this.updateDisplay(0);
         this.parseStat();
-        this.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.refreshTime * 1000, () => {
+        // seconds-based timers let GLib batch wakeups; speeds use the measured elapsed time
+        this.timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this.refreshTime, () => {
             this.parseStat();
             return GLib.SOURCE_CONTINUE;
         });
