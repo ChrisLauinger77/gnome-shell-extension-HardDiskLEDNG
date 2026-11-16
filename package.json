@@ -1,6 +1,6 @@
 {
     "name": "gnome-shell-extension-harddiskledng",
-    "version": "51.0.0",
+    "version": "51.1.0",
     "description": "Show harddisk activity with IO speed and an LED in the GNOME Shell panel.",
     "main": "harddiskledNG@lauinger-clan.de/extension.js",
     "scripts": {
