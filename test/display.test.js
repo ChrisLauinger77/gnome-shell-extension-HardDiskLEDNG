@@ -12,6 +12,7 @@ class Actor {
     visible = true;
     destroyed = false;
     children = [];
+    actions = [];
 
     constructor(properties) {
         Object.assign(this, properties);
@@ -29,8 +30,8 @@ class Actor {
     add_child(child) {
         this.children.push(child);
     }
-    set_child(child) {
-        this.children = [child];
+    add_action(action) {
+        this.actions.push(action);
     }
     connect() {
         return 1;
@@ -38,6 +39,22 @@ class Actor {
     destroy() {
         this.destroyed = true;
         for (const child of this.children) child.destroy();
+    }
+}
+
+class PanelButton extends Actor {
+    constructor(menuAlignment, nameText, dontCreateMenu) {
+        super({ menuAlignment, nameText, dontCreateMenu });
+    }
+}
+
+class ClickGesture {
+    constructor(properties) {
+        Object.assign(this, properties);
+    }
+    connect(signal, callback) {
+        this[signal] = callback;
+        return 1;
     }
 }
 
@@ -68,8 +85,11 @@ function createIndicator(t) {
     let mode = 0;
     let timer = null;
     let signalId = 0;
+    let preferencesOpened = 0;
     const handlers = new Map();
     const requests = [];
+    const statusArea = [];
+    const errors = [];
     const settings = {
         get_int: (key) => (key === "defaultmode" ? -1 : mode),
         get_string: () => "#00ff00",
@@ -92,8 +112,16 @@ function createIndicator(t) {
         {
             Extension: class {
                 path = "/test/extension";
+                uuid = "harddiskledNG@lauinger-clan.de";
+                metadata = { name: "Harddisk LED NG" };
                 getSettings() {
                     return settings;
+                }
+                getLogger() {
+                    return { error: (...args) => errors.push(args) };
+                }
+                openPreferences() {
+                    preferencesOpened++;
                 }
             },
             DiskStatsSampler,
@@ -102,14 +130,29 @@ function createIndicator(t) {
                     requests.push({ cancellable, resolve, reject });
                 }),
             Gio: { Cancellable, icon_new_for_string: (path) => path },
-            St: { Button: Actor, BoxLayout: Actor, Label, Icon },
-            Clutter: { ActorAlign: { CENTER: 0 }, Orientation: { HORIZONTAL: 0 } },
-            Main: { panel: { _rightBox: { insert_child_at_index() {}, remove_child() {} } } },
+            St: { BoxLayout: Actor, Label, Icon },
+            Clutter: {
+                ActorAlign: { CENTER: 0 },
+                Orientation: { HORIZONTAL: 0 },
+                BUTTON_PRIMARY: 1,
+                BUTTON_MIDDLE: 2,
+                BUTTON_SECONDARY: 3,
+                ClickGesture,
+            },
+            PanelMenu: { Button: PanelButton },
+            Main: {
+                panel: {
+                    addToStatusArea(role, indicator, position, box) {
+                        statusArea.push({ role, indicator, position, box });
+                    },
+                },
+            },
             GLib: {
                 PRIORITY_DEFAULT: 0,
                 SOURCE_CONTINUE: true,
                 get_monotonic_time: () => time * 1000000,
-                timeout_add(_priority, _interval, callback) {
+                timeout_add_seconds(_priority, interval, callback) {
+                    assert.equal(interval, 2);
                     timer = callback;
                     return 1;
                 },
@@ -128,6 +171,14 @@ function createIndicator(t) {
         indicator,
         requests,
         settings,
+        statusArea,
+        errors,
+        preferencesOpened: () => preferencesOpened,
+        click(button) {
+            const gesture = indicator.button.actions.find((action) => action.required_button === button);
+            assert.equal(gesture.recognize_on_press, true);
+            gesture.recognize(gesture);
+        },
         tick() {
             assert.notEqual(timer, null);
             return timer();
@@ -206,6 +257,39 @@ test("changing display mode reuses the current speed without advancing the disk 
     assert.equal(sampler.previousCounters, previousCounters);
 });
 
+test("the indicator is a named, menu-less status area button", (t) => {
+    const { indicator, statusArea } = createIndicator(t);
+    assert.ok(indicator.button instanceof PanelButton);
+    assert.equal(indicator.button.nameText, "Harddisk LED NG");
+    assert.equal(indicator.button.dontCreateMenu, true);
+    assert.deepEqual(statusArea, [
+        { role: "harddiskledNG@lauinger-clan.de", indicator: indicator.button, position: 0, box: "right" },
+    ]);
+    const button = indicator.button;
+    indicator.disable();
+    assert.equal(button.destroyed, true);
+});
+
+test("left clicks cycle forward, right clicks backward, and a middle click opens the preferences", (t) => {
+    const fixture = createIndicator(t);
+    const { indicator, settings } = fixture;
+    assert.equal(indicator.button.actions.length, 3);
+    fixture.click(1);
+    fixture.click(1);
+    assert.equal(indicator.mode, 2);
+    fixture.click(3);
+    assert.equal(indicator.mode, 1);
+    fixture.click(2);
+    assert.equal(indicator.mode, 1);
+    assert.equal(fixture.preferencesOpened(), 1);
+    settings.set_int("mode", 7);
+    fixture.click(1);
+    assert.equal(indicator.mode, 0);
+    fixture.click(3);
+    assert.equal(indicator.mode, 7);
+    assert.equal(fixture.requests.length, 1);
+});
+
 test("timer ticks do not start overlapping disk reads", async (t) => {
     const fixture = createIndicator(t);
     assert.equal(fixture.tick(), true);
@@ -246,14 +330,32 @@ test("a cancelled read cannot update a newly enabled instance or clear its pendi
     assert.equal(fixture.indicator.ioSpeed.text, "512K/s");
 });
 
-test("failed reads are reported and a later tick can retry", async (t) => {
+test("failed reads turn the LED off, log once per series, and a later tick can retry", async (t) => {
     const fixture = createIndicator(t);
-    await fixture.fail(0);
-    assert.equal(fixture.indicator.ioSpeed.text, "disk read failed");
-    assert.equal(fixture.indicator.readCancellable, null);
+    const { indicator } = fixture;
+    await fixture.finish(0, 1000, 0);
     fixture.tick();
-    await fixture.finish(1, 1000, 2);
-    assert.equal(fixture.indicator.ioSpeed.text, "0B/s");
+    await fixture.finish(1, 3000, 2);
+    assert.equal(indicator.ioSpeedIcon.opacity, 255);
+    fixture.tick();
+    await fixture.fail(2);
+    assert.equal(indicator.ioSpeed.text, "--");
+    assert.equal(indicator.ioSpeedIcon.opacity, 0);
+    assert.equal(indicator.readCancellable, null);
+    assert.equal(fixture.errors.length, 1);
+    assert.equal(fixture.errors[0][0], "Failed to read disk statistics");
+    assert.equal(fixture.errors[0][1].message, "disk read failed");
+    fixture.tick();
+    await fixture.fail(3);
+    assert.equal(fixture.errors.length, 1);
+    fixture.settings.set_int("mode", 1);
+    assert.equal(indicator.ioSpeed.text, "--");
+    fixture.tick();
+    await fixture.finish(4, 7000, 6);
+    assert.equal(indicator.ioSpeed.text, "512K/s");
+    fixture.tick();
+    await fixture.fail(5);
+    assert.equal(fixture.errors.length, 2);
 });
 
 test("cancellation errors arriving after disable do not update destroyed widgets", async (t) => {
@@ -262,4 +364,5 @@ test("cancellation errors arriving after disable do not update destroyed widgets
     await fixture.fail(0);
     assert.equal(fixture.indicator.ioSpeed, null);
     assert.equal(fixture.indicator.readCancellable, null);
+    assert.equal(fixture.errors.length, 0);
 });

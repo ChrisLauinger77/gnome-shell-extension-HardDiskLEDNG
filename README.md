@@ -5,7 +5,7 @@
 ![Gnome Extensions Downloads](https://img.shields.io/gnome-extensions/dt/harddiskledNG@lauinger-clan.de) ![GNOME Shell](https://img.shields.io/badge/GNOME-48%20--%2051-blue?logo=gnome&logoColor=white) ![GitHub License](https://img.shields.io/github/license/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG)
 
 </div>
-GNOME Shell extension that shows harddisk activity with IO speed and an LED. Click the indicator to cycle through display modes.
+GNOME Shell extension that shows harddisk activity with IO speed and an LED. Left-click the indicator to cycle forward through display modes, right-click to cycle backward; middle-click opens the preferences.
 
 Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/).
 
@@ -19,7 +19,8 @@ Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/)
 
 #### Icon and Settings
 
-![screenshot: quick settings](docs/screenshot.png)
+![screenshot: icon](docs/icon.png)
+![screenshot: settings](docs/screenshot.png)
 
 ## Development
 
@@ -34,7 +35,7 @@ Extension sources live in `harddiskledNG@lauinger-clan.de/`.
 - `./harddiskledng.sh check-version` / `update-version`: check or synchronize npm versions with metadata's `version-name`.
 - `./harddiskledng.sh setup-hooks`: enable the optional staged-version check before commits.
 
-Packaging requires `gnome-extensions` and gettext's `msgfmt`. Development checks use Node.js/npm, Bash, Git, and `jq`; CI uses Node.js 24. Translation updates require `xgettext`, `msgmerge`, and `msgattrib`.
+Packaging requires `gnome-extensions` and gettext's `msgfmt`. Development checks use Node.js/npm, Bash, Git, and `jq`; CI uses Node.js 26. Translation updates require `xgettext`, `msgmerge`, and `msgattrib`.
 
 GitHub Actions runs lint, tests, version checks, and a Shexli report on pushes and pull requests to `main`.
 Pushing a new tag matching `v<version-name>` from metadata builds the ZIP, creates a GitHub release, and uploads to EGO using the repository secrets `EGO_USERNAME` and `EGO_PASSWORD`.

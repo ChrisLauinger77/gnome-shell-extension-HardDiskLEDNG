@@ -1,14 +1,27 @@
-import { default as Clutter } from "gi://Clutter";
-import { default as St } from "gi://St";
-import * as Main from "resource:///org/gnome/shell/ui/main.js";
-import { default as Gio } from "gi://Gio";
+import Clutter from "gi://Clutter";
+import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import St from "gi://St";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import { DiskStatsSampler } from "./lib/diskStats.js";
 import { readDiskStats } from "./lib/diskStatsReader.js";
 
+// display modes, indexed by the "mode" setting; ui/prefs.ui lists them in the same order
+const MODES = [
+    { speed: true, diskIcon: true, led: true, largeLed: false }, // small LED, speed and icon
+    { speed: true, diskIcon: true, led: true, largeLed: true }, // large LED, speed and icon
+    { speed: false, diskIcon: true, led: true, largeLed: false }, // small LED and icon
+    { speed: false, diskIcon: true, led: true, largeLed: true }, // large LED and icon
+    { speed: true, diskIcon: false, led: true, largeLed: false }, // small LED and speed
+    { speed: true, diskIcon: false, led: false, largeLed: false }, // speed only
+    { speed: false, diskIcon: false, led: true, largeLed: false }, // small LED only
+    { speed: false, diskIcon: false, led: true, largeLed: true }, // large LED only
+];
+
 export default class HardDiskLEDNGExtension extends Extension {
-    refreshTime = 2.0; // in seconds
+    refreshTime = 2; // in seconds
 
     ledMinThreshold = 100000;
 
@@ -26,20 +39,32 @@ export default class HardDiskLEDNGExtension extends Extension {
     ioSpeedStaticIcon = null;
     ioSpeedIcon = null;
 
-    changeMode() {
-        let mode = this.mode + 1;
-        if (mode > 7) {
-            mode = 0;
-        }
+    changeMode(step) {
+        // step forward (1) or backward (-1) through the modes, wrapping at both ends
+        const mode = (this.mode + step + MODES.length) % MODES.length;
         // the 'changed::mode' handler updates this.mode and refreshes the view
         this.settings.set_int("mode", mode);
     }
 
+    addClickGestures() {
+        // left click cycles forward, right click backward, middle click opens the preferences
+        const actions = [
+            [Clutter.BUTTON_PRIMARY, () => this.changeMode(1)],
+            [Clutter.BUTTON_MIDDLE, () => this.openPreferences()],
+            [Clutter.BUTTON_SECONDARY, () => this.changeMode(-1)],
+        ];
+        for (const [button, action] of actions) {
+            const gesture = new Clutter.ClickGesture({
+                required_button: button,
+                recognize_on_press: true,
+            });
+            gesture.connect("recognize", action);
+            this.button.add_action(gesture);
+        }
+    }
+
     onModeChanged() {
         this.mode = this.settings.get_int("mode");
-        if (this.mode > 7) {
-            this.mode = 0;
-        }
         this.updateDisplay(this.lastSpeed);
     }
 
@@ -54,21 +79,10 @@ export default class HardDiskLEDNGExtension extends Extension {
     }
 
     updateVisibility() {
-        if ([2, 3, 6, 7].includes(this.mode)) {
-            this.ioSpeed.hide();
-        } else {
-            this.ioSpeed.show();
-        }
-        if ([4, 5, 6, 7].includes(this.mode)) {
-            this.ioSpeedStaticIcon.hide();
-        } else {
-            this.ioSpeedStaticIcon.show();
-        }
-        if (this.mode === 5) {
-            this.ioSpeedIcon.hide();
-        } else {
-            this.ioSpeedIcon.show();
-        }
+        const { speed, diskIcon, led } = MODES[this.mode];
+        this.ioSpeed.visible = speed;
+        this.ioSpeedStaticIcon.visible = diskIcon;
+        this.ioSpeedIcon.visible = led;
     }
 
     async parseStat() {
@@ -85,17 +99,24 @@ export default class HardDiskLEDNGExtension extends Extension {
             this.updateDisplay(speed);
             this.lastSpeed = speed;
         } catch (error) {
-            if (!cancellable.is_cancelled()) this.ioSpeed.set_text(error.message);
+            if (cancellable.is_cancelled()) return;
+
+            // the timer retries every refresh, so only log the first failure of a series
+            // the extension logger prefixes messages with the extension name
+            if (this.lastSpeed !== null) this.getLogger().error("Failed to read disk statistics", error);
+            this.lastSpeed = null;
+            this.updateDisplay(null);
         } finally {
             if (this.readCancellable === cancellable) this.readCancellable = null;
         }
     }
 
     updateDisplay(speed) {
+        // a null speed means the last disk read failed
         this.updateVisibility();
-        this.ioSpeedIcon.icon_size = [1, 3, 7].includes(this.mode) ? 12 : 8;
-        this.ioSpeedIcon.opacity = speed > this.ledMinThreshold ? 255 : 0;
-        this.ioSpeed.set_text(this.speedToString(speed));
+        this.ioSpeedIcon.icon_size = MODES[this.mode].largeLed ? 12 : 8;
+        this.ioSpeedIcon.opacity = speed !== null && speed > this.ledMinThreshold ? 255 : 0;
+        this.ioSpeed.set_text(speed === null ? "--" : this.speedToString(speed));
     }
 
     speedToString(amount) {
@@ -106,16 +127,16 @@ export default class HardDiskLEDNGExtension extends Extension {
 
         let unit = 0;
         while (amount >= 1000) {
-            // 1M=1024K, 1MB/s=1000MB/s
+            // decimal units: 1K/s = 1000B/s, 1M/s = 1000K/s
             amount /= 1000;
             ++unit;
         }
 
         if (amount >= 100)
-            // 100MB 100KB 200KB
+            // 100K/s, 250M/s
             digits = 0;
         else if (amount >= 10)
-            // 10MB 10.2
+            // 10.2K/s, 25.6M/s
             digits = 1;
         else digits = 2;
         return String(amount.toFixed(digits)) + speedMap[unit];
@@ -126,24 +147,16 @@ export default class HardDiskLEDNGExtension extends Extension {
         this.lastSpeed = 0;
         this.settings = this.getSettings();
 
-        // apply the configured default mode on load, -1 (None) keeps the last used mode
+        // apply the configured default mode on load, -1 (None) keeps the last used mode;
+        // the schema ranges keep both keys within the valid modes
         const defaultMode = this.settings.get_int("defaultmode");
-        if (defaultMode >= 0 && defaultMode <= 7) {
+        if (defaultMode >= 0) {
             this.settings.set_int("mode", defaultMode);
         }
         this.mode = this.settings.get_int("mode");
-        if (this.mode > 7) {
-            this.mode = 0;
-        }
 
-        this.button = new St.Button({
-            style_class: "panel-button",
-            reactive: true,
-            can_focus: true,
-            x_expand: true,
-            y_expand: false,
-            track_hover: true,
-        });
+        // menu-less panel button, clicks are handled by addClickGestures()
+        this.button = new PanelMenu.Button(0.0, this.metadata.name, true);
 
         this.layoutManager = new St.BoxLayout({
             orientation: Clutter.Orientation.HORIZONTAL,
@@ -173,11 +186,10 @@ export default class HardDiskLEDNGExtension extends Extension {
         this.layoutManager.add_child(this.ioSpeedStaticIcon);
         this.layoutManager.add_child(this.ioSpeedIcon);
         this.layoutManager.add_child(this.ioSpeed);
-        this.button.connect("button-press-event", this.changeMode.bind(this));
+        this.button.add_child(this.layoutManager);
+        this.addClickGestures();
 
-        this.button.set_child(this.layoutManager);
-
-        Main.panel._rightBox.insert_child_at_index(this.button, 0);
+        Main.panel.addToStatusArea(this.uuid, this.button, 0, "right");
 
         // react to mode changes from the preferences dialog (and from clicking)
         this.settingsChangedId = this.settings.connect("changed::mode", this.onModeChanged.bind(this));
@@ -187,7 +199,8 @@ export default class HardDiskLEDNGExtension extends Extension {
 
         this.updateDisplay(0);
         this.parseStat();
-        this.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.refreshTime * 1000, () => {
+        // seconds-based timers let GLib batch wakeups; speeds use the measured elapsed time
+        this.timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this.refreshTime, () => {
             this.parseStat();
             return GLib.SOURCE_CONTINUE;
         });
@@ -210,7 +223,7 @@ export default class HardDiskLEDNGExtension extends Extension {
             this.settings.disconnect(this.colorChangedId);
             this.colorChangedId = null;
         }
-        Main.panel._rightBox.remove_child(this.button);
+        // destroying the button also removes it from the panel's status area
         this.button.destroy();
         this.settings = null;
         this.button = null;

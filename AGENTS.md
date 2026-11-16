@@ -6,13 +6,27 @@ Guidance for coding agents working in this repository.
 
 Harddisk LED NG is a GNOME Shell extension that reads disk activity from
 `/proc/diskstats` and displays IO speed, an activity LED, and an optional disk
-icon in the top panel. Clicking the indicator cycles through eight display
-modes. Preferences control the active mode, default mode, and LED color.
+icon in the top panel. Left-clicking the indicator cycles forward through
+eight display modes, right-clicking cycles backward, and middle-clicking
+opens the preferences. Preferences
+control the active mode, default mode, and LED color.
 
 The extension UUID is `harddiskledNG@lauinger-clan.de`; extension source lives
-inside the directory with that exact name. The `shell-version` field in
-`harddiskledNG@lauinger-clan.de/metadata.json` lists the supported GNOME Shell
-versions, currently 48 through 51 inclusive.
+inside the directory with that exact name. The extension supports GNOME Shell
+48 through 51 inclusive. The `shell-version` field in
+`harddiskledNG@lauinger-clan.de/metadata.json` covers only the release in the
+source tree, currently 49 through 51; GNOME Shell 48 is served by the
+published `v51.0.0` release.
+
+The GNOME Shell compatibility badge in `README.md` lists every GNOME Shell
+major version supported by any Harddisk LED NG release. It currently covers
+GNOME 48 through 51 inclusive. The `shell-version` field in
+`harddiskledNG@lauinger-clan.de/metadata.json` covers only the current
+extension release. When updating the README badge, include GNOME versions that
+older extension releases support, even if the current `shell-version` list
+omits them. Tags before `v51.0.0` are releases of the upstream Harddisk LED
+extension (UUID `harddiskled@bijidroid.gmail.com`) and do not count toward the
+badge.
 
 The fork uses GSettings schema ID `org.gnome.shell.extensions.HardDiskLEDNG`
 and path `/org/gnome/shell/extensions/HardDiskLEDNG/`. Keep metadata's
@@ -42,9 +56,10 @@ future changes to the schema ID or path as settings migrations.
   LED artwork loaded by the panel's `St.Icon`.
 - `test/diskStats.test.js`: coverage for disk selection, elapsed sampling time,
   counter resets, and device additions/removals.
-- `test/display.test.js`: runtime refresh and display-mode coverage with
-  stubbed Shell actors, including cancellation, overlapping reads, and
-  disable/re-enable while a read is pending.
+- `test/display.test.js`: runtime refresh, display-mode, panel-button, and
+  click-gesture coverage with stubbed Shell actors, including cancellation,
+  overlapping reads, read failures, and disable/re-enable while a read is
+  pending.
 - `test/diskStatsReader.test.js`: asynchronous Gio read, enumeration, cleanup,
   and cancellation coverage.
 - `test/tooling.test.js`: Node test-runner coverage for version updates,
@@ -112,6 +127,9 @@ Notes:
   metadata, schema, packaging, or user-data behavior that may affect
   extensions.gnome.org review.
 - Use modern GJS ES modules and imports consistent with the existing files.
+- Log through `this.getLogger()` (added in GNOME 48), which prefixes messages
+  with the extension name, rather than calling `console` directly. Keep
+  logging to important messages and errors.
 - Keep Gtk/Gdk/Adw imports in the preferences process and Shell-only imports
   such as St/Clutter in the runtime process.
 - Keep settings schema keys, display-mode indices, UI widget IDs, and
@@ -129,14 +147,16 @@ Notes:
 
 ## Runtime Behavior To Handle Carefully
 
-- `extension.js` refreshes disk statistics with a repeating GLib timeout,
-  currently every two seconds. Remove the timeout, disconnect settings
-  signals, destroy the panel button and its children, and clear references in
-  `disable()`.
+- `extension.js` refreshes disk statistics with a repeating
+  `GLib.timeout_add_seconds()` source, currently every two seconds. Remove the
+  timeout, disconnect settings signals, destroy the panel button and its
+  children, and clear references in `disable()`.
 - Runtime objects, timers, and settings connections belong to `enable()` and
   must be recreated cleanly when the extension is enabled again.
 - Whole physical disks are selected through `/sys/block`; virtual block
-  devices and partitions are excluded. Disk speed uses per-device read/write
+  devices and partitions are excluded. Sysfs writes `/` in device names as
+  `!` (for example `cciss!c0d0`); map it back before matching
+  `/proc/diskstats`. Disk speed uses per-device read/write
   counter deltas, elapsed monotonic time, and a 512-byte sector conversion.
   New or reset devices establish a fresh baseline. Removing a disk must not
   subtract its lifetime counters from the total. Clear the sampler on disable.
@@ -144,14 +164,21 @@ Notes:
   read owns a `Gio.Cancellable`; cancel it in `disable()`. Ignore cancelled
   completions and keep old reads from clearing a new session's cancellable.
   Timer callbacks return `GLib.SOURCE_CONTINUE`, rather than a Promise.
+- A failed read sets the last speed to `null`: the LED turns off, the label
+  shows `--` until a read succeeds, and only the first failure of a series
+  is logged with `this.getLogger().error()`. Do not put raw error messages in
+  the panel label.
 - Display-mode changes redraw the current sample without reading disk counters
   or advancing the sampler's timestamp.
-- The eight supported display modes are indexed 0 through 7. Clicking the
+- The eight supported display modes are indexed 0 through 7 and described by
+  the `MODES` table in `extension.js`, in the same order as the combo rows in
+  `ui/prefs.ui` and the schema's `mode` range. Clicking the
   indicator updates the `mode` setting; the settings-change handler updates
   the view. Preserve this flow so preferences and panel clicks stay in sync.
 - `defaultmode` uses `-1` for "None", which preserves the last active mode.
   The preferences selector maps index 0 to `-1` and subsequent indices to the
-  corresponding display mode.
+  corresponding display mode. It is applied on every `enable()`, including
+  after a screen unlock; this is intended behavior.
 - LED color is persisted as a CSS color string. Preserve validation before
   using it in the indicator's inline style and keep the reset action tied to
   the schema default.
@@ -161,8 +188,14 @@ Notes:
 - Preferences keep a settings reference for the window lifetime and disconnect
   settings-change handlers when the associated widgets are destroyed. Preserve
   this ownership when adding bindings.
-- The panel indicator uses `Main.panel._rightBox`; treat changes to this Shell
-  integration as GNOME-version-sensitive.
+- The panel indicator is a menu-less `PanelMenu.Button` added with
+  `Main.panel.addToStatusArea()` under the extension UUID; destroying it in
+  `disable()` also removes the status-area entry. Handle clicks with
+  `Clutter.ClickGesture` actions (primary cycles the mode forward, secondary
+  backward, middle opens the preferences) rather than connecting raw event
+  signals such as `button-press-event`, which GNOME 51 deprecates. Keep the
+  click actions in sync with the metadata description and the README. Treat
+  changes to this Shell integration as GNOME-version-sensitive.
 
 ## Validation Checklist
 

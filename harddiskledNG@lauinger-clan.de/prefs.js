@@ -2,27 +2,25 @@ import Gdk from "gi://Gdk";
 import Gtk from "gi://Gtk";
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 
-// Number of display modes supported by extension.js (0 .. MODE_COUNT - 1)
-const MODE_COUNT = 8;
-
 export default class HardDiskLEDNGPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings; // keep a reference for the window lifetime
 
         const builder = new Gtk.Builder();
-        builder.set_translation_domain(this.metadata["gettext-domain"] ?? this.metadata.uuid);
+        builder.set_translation_domain(this.metadata["gettext-domain"]);
         builder.add_from_file(`${this.path}/ui/prefs.ui`);
 
         const rowMode = builder.get_object("row_mode");
         const rowDefaultMode = builder.get_object("row_defaultmode");
 
+        // the schema ranges keep both keys within the combo rows' items
         // mode: combo index == mode
         this._bindCombo(
             settings,
             "mode",
             rowMode,
-            (value) => Math.min(Math.max(value, 0), MODE_COUNT - 1),
+            (value) => value,
             (index) => index
         );
 
@@ -31,7 +29,7 @@ export default class HardDiskLEDNGPreferences extends ExtensionPreferences {
             settings,
             "defaultmode",
             rowDefaultMode,
-            (value) => (value < 0 || value >= MODE_COUNT ? 0 : value + 1),
+            (value) => value + 1,
             (index) => index - 1
         );
 
