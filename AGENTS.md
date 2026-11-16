@@ -14,11 +14,10 @@ inside the directory with that exact name. The `shell-version` field in
 `harddiskledNG@lauinger-clan.de/metadata.json` lists the supported GNOME Shell
 versions, currently 48 through 51 inclusive.
 
-The fork preserves the original GSettings schema ID
-`org.gnome.shell.extensions.harddiskled` and path
-`/org/gnome/shell/extensions/harddiskled/` so existing preferences remain
-available. Keep metadata's `settings-schema` consistent with the schema XML;
-treat changes to the schema ID or path as settings migrations.
+The fork uses GSettings schema ID `org.gnome.shell.extensions.HardDiskLEDNG`
+and path `/org/gnome/shell/extensions/HardDiskLEDNG/`. Keep metadata's
+`settings-schema` and the schema XML filename consistent with that ID; treat
+future changes to the schema ID or path as settings migrations.
 
 ## Repository Layout
 
@@ -29,13 +28,18 @@ treat changes to the schema ID or path as settings migrations.
   Gtk/Gdk, settings bindings, and LED color conversion.
 - `harddiskledNG@lauinger-clan.de/ui/prefs.ui`: Gtk Builder UI using libadwaita
   preferences pages, mode selectors, and the LED color picker.
-- `harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml`:
+- `harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml`:
   GSettings schema. Keep keys in sync with `extension.js`, `prefs.js`, and the
   preferences UI.
 - `harddiskledNG@lauinger-clan.de/metadata.json`: extension metadata,
   supported Shell versions, release version, gettext domain, and schema ID.
 - `harddiskledNG@lauinger-clan.de/stylesheet.css`: panel indicator styling.
-- `harddiskledNG@lauinger-clan.de/icons/`: bundled disk artwork.
+- `harddiskledNG@lauinger-clan.de/lib/diskStats.js`: diskstats parsing and
+  per-device rate sampling, shared by the runtime and Node tests.
+- `test/diskStats.test.js`: coverage for disk selection, elapsed sampling time,
+  counter resets, and device additions/removals.
+- `test/display.test.js`: runtime refresh and display-mode coverage with
+  stubbed Shell actors and filesystem reads.
 - `test/tooling.test.js`: Node test-runner coverage for version updates,
   staged-version hooks, packaging paths, and command failure handling. Tests
   use temporary checkouts and mocked GNOME commands.
@@ -53,7 +57,7 @@ treat changes to the schema ID or path as settings migrations.
 - `./harddiskledng.sh install-dependencies`: install JavaScript development
   dependencies with npm.
 - `npm run lint`: run ESLint across the repository.
-- `npm test`: run the tooling regression tests.
+- `npm test`: run the disk sampling, display, and tooling regression tests.
 - `./harddiskledng.sh zip`: build
   `harddiskledNG@lauinger-clan.de.shell-extension.zip` at the repository root.
 - `./harddiskledng.sh pack [output-directory]`: build the same archive into an
@@ -81,8 +85,8 @@ Notes:
   tools such as `xgettext`, `msgmerge`, and `msgattrib`.
 - Version commands require `jq`; version updates also require Node.js/npm.
   The tooling tests require Node.js/npm, Bash, Git, and `jq`.
-- Tooling tests mock installation and upload commands. Passing them does not
-  verify the live GNOME Shell UI.
+- Tests mock Shell actors and installation/upload commands. Passing them does
+  not verify the live GNOME Shell UI.
 - Packaging includes translation catalogs only when `.po` files exist.
 
 ## Coding Conventions
@@ -114,10 +118,13 @@ Notes:
   `disable()`.
 - Runtime objects, timers, and settings connections belong to `enable()` and
   must be recreated cleanly when the extension is enabled again.
-- Disk speed derives from differences between cumulative sector counts, the
-  refresh interval, and a 512-byte sector conversion. Device filtering affects
-  which disks and partitions contribute to the total; changes can cause
-  double counting or omit activity.
+- Whole physical disks are selected through `/sys/block`; virtual block
+  devices and partitions are excluded. Disk speed uses per-device read/write
+  counter deltas, elapsed monotonic time, and a 512-byte sector conversion.
+  New or reset devices establish a fresh baseline. Removing a disk must not
+  subtract its lifetime counters from the total. Clear the sampler on disable.
+- Display-mode changes redraw the current sample without reading disk counters
+  or advancing the sampler's timestamp.
 - The eight supported display modes are indexed 0 through 7. Clicking the
   indicator updates the `mode` setting; the settings-change handler updates
   the view. Preserve this flow so preferences and panel clicks stay in sync.
@@ -138,6 +145,7 @@ Notes:
 Before finishing changes, run the validations that match the edit:
 
 - JavaScript changes: `npm run lint`.
+- Disk sampling or display changes: run or extend `npm test`.
 - Helper script, version logic, or hook changes: run or extend `npm test` and
   run `./harddiskledng.sh check-version`.
 - Schema changes: run

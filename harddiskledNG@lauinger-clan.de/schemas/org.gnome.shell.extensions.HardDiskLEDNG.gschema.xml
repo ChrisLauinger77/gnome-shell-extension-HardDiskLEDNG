@@ -2,7 +2,7 @@
 <schemalist gettext-domain="harddiskledNG@lauinger-clan.de">
   <schema path="/org/gnome/shell/extensions/HardDiskLEDNG/" id="org.gnome.shell.extensions.HardDiskLEDNG">
       <key name="mode" type="i">
-        <range min="0" max="10" />
+        <range min="0" max="7" />
         <default>0</default>
         <summary>Display mode</summary>
         <description>Currently active display mode (0-7).</description>

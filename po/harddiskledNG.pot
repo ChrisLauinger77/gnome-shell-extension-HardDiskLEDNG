@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 16:54+0100\n"
+"POT-Creation-Date: 2026-11-16 18:17+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,31 +17,31 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:7
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:7
 msgid "Display mode"
 msgstr ""
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:8
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:8
 msgid "Currently active display mode (0-7)."
 msgstr ""
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:13
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:13
 msgid "Default display mode"
 msgstr ""
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:14
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:14
 msgid ""
 "Mode applied when the extension is loaded. -1 (None) keeps the last used "
 "mode."
 msgstr ""
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:18
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:18
 #: harddiskledNG@lauinger-clan.de/ui/prefs.ui:66
 #: harddiskledNG@lauinger-clan.de/ui/prefs.ui:84
 msgid "LED color"
 msgstr ""
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:19
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:19
 msgid "Color of the activity LED as a CSS color string."
 msgstr ""
 

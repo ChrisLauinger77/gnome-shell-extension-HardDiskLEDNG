@@ -44,7 +44,7 @@ case "${1:-}" in
     output_dir="${2:-$script_dir}"
     mkdir -p -- "$output_dir"
     output_dir=$(cd -- "$output_dir" && pwd)
-    pack_args=(--out-dir="$output_dir" --extra-source=ui/ --extra-source=icons/ --extra-source=../LICENSE --force)
+    pack_args=(--out-dir="$output_dir" --extra-source=ui/ --extra-source=lib/ --extra-source=../LICENSE --force)
     po_files=(po/*.po)
     if (( ${#po_files[@]} > 0 )); then
       pack_args+=(--podir=../po/)

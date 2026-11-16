@@ -9,7 +9,7 @@ Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/)
 Extension sources live in `harddiskledNG@lauinger-clan.de/`.
 
 - `./harddiskledng.sh install-dependencies`: install npm development dependencies.
-- `npm run lint` / `npm test`: lint JavaScript and run the tooling regression tests.
+- `npm run lint` / `npm test`: lint JavaScript and run the disk sampling, display, and tooling regression tests.
 - `./harddiskledng.sh zip`: create `harddiskledNG@lauinger-clan.de.shell-extension.zip` at the repository root.
 - `./harddiskledng.sh pack [output-directory]`: build into an optional output directory.
 - `./harddiskledng.sh install`: build, install, and enable the extension locally.

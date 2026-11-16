@@ -127,7 +127,8 @@ test("pack uses the extension directory and only includes existing translations"
     assert.ok(log.includes(`cwd=${join(directory, extension)}\n`));
     assert.ok(log.includes(`--out-dir=${directory}\n`));
     assert.ok(!log.includes("--podir="));
-    assert.ok(!log.includes("--extra-source=./lib"));
+    assert.ok(log.includes("--extra-source=lib/\n"));
+    assert.ok(!log.includes("--extra-source=icons/"));
 
     mkdirSync(join(directory, "po"));
     writeFileSync(join(directory, "po", "fr.po"), "");

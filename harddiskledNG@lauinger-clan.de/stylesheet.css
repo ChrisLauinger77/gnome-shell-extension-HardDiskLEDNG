@@ -1,17 +1,17 @@
-.harddiskled-label {
+.harddiskledng-label {
     font-size: 1em;
     min-width: 4em;
     text-align: right;
 }
 
-.harddiskled-icon {
+.harddiskledng-icon {
     font-size: 1em;
     min-width: 1.2em;
     text-align: center;
     color: lime;
 }
 
-.harddiskled-container {
+.harddiskledng-container {
     spacing: 0px;
     margin-left: 2px;
     margin-right: 2px;

@@ -5,7 +5,7 @@ import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/
 // Number of display modes supported by extension.js (0 .. MODE_COUNT - 1)
 const MODE_COUNT = 8;
 
-export default class HardDiskLEDPreferences extends ExtensionPreferences {
+export default class HardDiskLEDNGPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         window._settings = settings; // keep a reference for the window lifetime

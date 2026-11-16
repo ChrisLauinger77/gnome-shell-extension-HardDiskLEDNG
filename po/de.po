@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Harddisk LED NG 51.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 16:54+0100\n"
+"POT-Creation-Date: 2026-11-16 18:17+0100\n"
 "PO-Revision-Date: 2026-11-16 17:23+0100\n"
 "Last-Translator: Christian Lauinger <christian@lauinger-clan.de>\n"
 "Language-Team: German\n"
@@ -16,19 +16,19 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 3.10\n"
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:7
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:7
 msgid "Display mode"
 msgstr "Anzeigemodus"
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:8
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:8
 msgid "Currently active display mode (0-7)."
 msgstr "Derzeit aktiver Anzeigemodus (0–7)."
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:13
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:13
 msgid "Default display mode"
 msgstr "Standardanzeigemodus"
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:14
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:14
 msgid ""
 "Mode applied when the extension is loaded. -1 (None) keeps the last used "
 "mode."
@@ -36,13 +36,13 @@ msgstr ""
 "Modus beim Laden der Erweiterung. -1 (Keiner) behält den zuletzt verwendeten "
 "Modus bei."
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:18
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:18
 #: harddiskledNG@lauinger-clan.de/ui/prefs.ui:66
 #: harddiskledNG@lauinger-clan.de/ui/prefs.ui:84
 msgid "LED color"
 msgstr "LED-Farbe"
 
-#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:19
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.HardDiskLEDNG.gschema.xml:19
 msgid "Color of the activity LED as a CSS color string."
 msgstr "Farbe der Aktivitäts-LED als CSS-Farbwert."
 

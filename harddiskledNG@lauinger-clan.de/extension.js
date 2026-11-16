@@ -4,9 +4,10 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { default as Gio } from "gi://Gio";
 import GLib from "gi://GLib";
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
+import { DiskStatsSampler, parseDiskStats } from "./lib/diskStats.js";
 
-export default class HardDiskLEDExtension extends Extension {
-    refreshTime = 2.0; // in seconds, speed displayed also /s
+export default class HardDiskLEDNGExtension extends Extension {
+    refreshTime = 2.0; // in seconds
 
     ledThreshold = 500000;
     ledMinThreshold = 100000;
@@ -16,19 +17,13 @@ export default class HardDiskLEDExtension extends Extension {
     colorChangedId = null;
     button = null;
     timeout = null;
-    cur = null;
     ioSpeed = null;
-    lastCount = null;
     lastSpeed = null;
+    sampler = null;
     mode = null;
     layoutManager = null;
     ioSpeedStaticIcon = null;
     ioSpeedIcon = null;
-
-    init() {
-        this.cur = 0;
-        this.lastCount = 0;
-    }
 
     changeMode() {
         let mode = this.mode + 1;
@@ -44,7 +39,7 @@ export default class HardDiskLEDExtension extends Extension {
         if (this.mode > 7) {
             this.mode = 0;
         }
-        this.parseStat(true);
+        this.updateDisplay(this.lastSpeed, true);
     }
 
     applyLedColor() {
@@ -75,56 +70,51 @@ export default class HardDiskLEDExtension extends Extension {
         }
     }
 
+    readDiskStats() {
+        const devices = new Set();
+        const enumerator = Gio.File.new_for_path("/sys/block").enumerate_children(
+            "standard::name,standard::symlink-target",
+            Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+            null
+        );
+        try {
+            for (let info = enumerator.next_file(null); info !== null; info = enumerator.next_file(null)) {
+                if (!info.get_symlink_target().includes("/virtual/")) devices.add(info.get_name());
+            }
+        } finally {
+            enumerator.close(null);
+        }
+
+        const [, contents] = Gio.File.new_for_path("/proc/diskstats").load_contents(null);
+        return parseDiskStats(new TextDecoder().decode(contents), devices);
+    }
+
     parseStat(forceDot = false) {
         try {
-            const inputFile = Gio.file_new_for_path("/proc/diskstats");
-            const [, contents] = inputFile.load_contents(null);
-            const lines = new TextDecoder().decode(contents).split("\n");
-
-            let count = 0;
-            for (const line of lines) {
-                const fields = line.split(/ +/);
-                if (fields.length <= 2) break;
-
-                if (
-                    parseInt(fields[2]) % 16 === 0 &&
-                    fields[3].indexOf("md0") !== 0 &&
-                    fields[3].indexOf("ram0") !== 0 &&
-                    fields[3].indexOf("dm-0") !== 0 &&
-                    fields[3].indexOf("zram0") !== 0 &&
-                    fields[3].indexOf("loop0") !== 0
-                ) {
-                    count = count + parseInt(fields[6]) + parseInt(fields[10]);
-                    // log(fields[3] + ':' + fields[6] + ' ' + fields[10] + ' ' + count);
-                }
-            }
-
-            if (this.lastCount === 0) this.lastCount = count;
-
-            const speed = ((count - this.lastCount) / this.refreshTime) * 512;
-
-            let dot = " ";
-            if (speed > this.lastSpeed || forceDot || speed > this.ledThreshold) {
-                if (speed > this.ledMinThreshold) {
-                    if ([0, 2, 4, 6].includes(this.mode)) {
-                        dot = "●";
-                    } else if ([1, 3, 7].includes(this.mode)) {
-                        dot = "⬤";
-                    }
-                }
-            }
-            this.updateVisibility();
-
-            this.ioSpeedIcon.set_text(dot);
-            this.ioSpeed.set_text(this.speedToString(speed));
-
-            this.lastCount = count;
+            const counters = this.readDiskStats();
+            const speed = this.sampler.sample(counters, GLib.get_monotonic_time() / 1000000);
+            this.updateDisplay(speed, forceDot);
             this.lastSpeed = speed;
         } catch (e) {
             this.ioSpeed.set_text(e.message);
         }
-
         return true;
+    }
+
+    updateDisplay(speed, forceDot = false) {
+        let dot = " ";
+        if (speed > this.lastSpeed || forceDot || speed > this.ledThreshold) {
+            if (speed > this.ledMinThreshold) {
+                if ([0, 2, 4, 6].includes(this.mode)) {
+                    dot = "●";
+                } else if ([1, 3, 7].includes(this.mode)) {
+                    dot = "⬤";
+                }
+            }
+        }
+        this.updateVisibility();
+        this.ioSpeedIcon.set_text(dot);
+        this.ioSpeed.set_text(this.speedToString(speed));
     }
 
     speedToString(amount) {
@@ -151,7 +141,8 @@ export default class HardDiskLEDExtension extends Extension {
     }
 
     enable() {
-        this.init();
+        this.sampler = new DiskStatsSampler();
+        this.lastSpeed = 0;
         this.settings = this.getSettings();
 
         // apply the configured default mode on load, -1 (None) keeps the last used mode
@@ -175,7 +166,7 @@ export default class HardDiskLEDExtension extends Extension {
 
         this.layoutManager = new St.BoxLayout({
             orientation: Clutter.Orientation.HORIZONTAL,
-            style_class: "harddiskled-container",
+            style_class: "harddiskledng-container",
         });
 
         this.ioSpeedStaticIcon = new St.Icon({
@@ -187,13 +178,13 @@ export default class HardDiskLEDExtension extends Extension {
         this.ioSpeed = new St.Label({
             text: "---",
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: "harddiskled-label",
+            style_class: "harddiskledng-label",
         });
 
         this.ioSpeedIcon = new St.Label({
             text: "",
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: "harddiskled-icon",
+            style_class: "harddiskledng-icon",
         });
 
         this.layoutManager.add_child(this.ioSpeedStaticIcon);
@@ -211,7 +202,7 @@ export default class HardDiskLEDExtension extends Extension {
         this.applyLedColor();
         this.colorChangedId = this.settings.connect("changed::led-color", this.applyLedColor.bind(this));
 
-        // the monotonic time, in microseconds
+        this.parseStat(true);
         this.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.refreshTime * 1000, () => this.parseStat(true));
     }
 
@@ -236,5 +227,8 @@ export default class HardDiskLEDExtension extends Extension {
         this.ioSpeedStaticIcon = null;
         this.ioSpeed = null;
         this.ioSpeedIcon = null;
+        this.sampler = null;
+        this.lastSpeed = null;
+        this.mode = null;
     }
 }
