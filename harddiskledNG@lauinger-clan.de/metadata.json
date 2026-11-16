@@ -1,0 +1,17 @@
+{
+    "description": "Show harddisk activity with IO speed and an LED. Click to cycle through display modes.",
+    "name": "Harddisk LED NG",
+    "settings-schema": "org.gnome.shell.extensions.HardDiskLEDNG",
+    "gettext-domain": "harddiskledNG@lauinger-clan.de",
+    "original-author": "bijignom",
+    "shell-version": ["48", "49", "50", "51"],
+    "url": "https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG",
+    "uuid": "harddiskledNG@lauinger-clan.de",
+    "donations": {
+        "github": "ChrisLauinger77",
+        "kofi": "ChrisLauinger77",
+        "paypal": "ChrisLauinger"
+    },
+    "version": 999,
+    "version-name": "51.0.0"
+}

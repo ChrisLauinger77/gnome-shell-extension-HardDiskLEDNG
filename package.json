@@ -1,0 +1,31 @@
+{
+    "name": "gnome-shell-extension-harddiskledng",
+    "version": "51.0.0",
+    "description": "Show harddisk activity with IO speed and an LED in the GNOME Shell panel.",
+    "main": "harddiskledNG@lauinger-clan.de/extension.js",
+    "scripts": {
+        "lint": "eslint .",
+        "test": "node --test test/*.test.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG.git"
+    },
+    "keywords": [
+        "gnome-shell-extension",
+        "disk-activity",
+        "io-speed"
+    ],
+    "author": "Chris Lauinger",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG/issues"
+    },
+    "homepage": "https://github.com/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG#readme",
+    "devDependencies": {
+        "@eslint/js": "^10.0.0",
+        "@microsoft/eslint-formatter-sarif": "3.1.0",
+        "eslint": "^10.0.0"
+    },
+    "type": "module"
+}

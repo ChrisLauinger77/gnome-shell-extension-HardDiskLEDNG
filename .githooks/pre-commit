@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+
+hook_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(git -C "$hook_dir/.." rev-parse --show-toplevel)
+cd "$repo_root"
+source "$hook_dir/version-utils.sh"
+
+metadata_path='harddiskledNG@lauinger-clan.de/metadata.json'
+metadata_json=$(git show ":$metadata_path")
+package_json=$(git show :package.json)
+lock_json=$(git show :package-lock.json)
+metadata_version=$(jq -er '.["version-name"] | strings' <<<"$metadata_json")
+package_version=$(jq -er '.version | strings' <<<"$package_json")
+
+if ! expected_version=$(normalize_version "$metadata_version"); then
+  echo "ERROR: Invalid staged metadata.json version-name: $metadata_version" >&2
+  exit 1
+fi
+
+if [[ "$package_version" != "$expected_version" ]] || ! check_lock_version "$expected_version" - <<<"$lock_json"; then
+  echo "ERROR: Staged package.json and package-lock.json must match version $expected_version." >&2
+  echo "Run ./harddiskledng.sh update-version, then stage both npm files again." >&2
+  exit 1
+fi
+
+echo "Staged version check OK."

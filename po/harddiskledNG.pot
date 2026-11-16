@@ -1,0 +1,133 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-16 16:54+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:7
+msgid "Display mode"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:8
+msgid "Currently active display mode (0-7)."
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:13
+msgid "Default display mode"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:14
+msgid ""
+"Mode applied when the extension is loaded. -1 (None) keeps the last used "
+"mode."
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:18
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:66
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:84
+msgid "LED color"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/schemas/org.gnome.shell.extensions.harddiskled.gschema.xml:19
+msgid "Color of the activity LED as a CSS color string."
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:7
+msgid "General"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:12
+msgid "Display"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:13
+msgid ""
+"Choose what is shown in the top panel. Clicking the indicator also cycles "
+"through the modes."
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:17
+msgid "Mode"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:18
+msgid "Currently active display mode"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:22
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:44
+msgid "Small LED, speed and icon"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:23
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:45
+msgid "Large LED, speed and icon"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:24
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:46
+msgid "Small LED and icon"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:25
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:47
+msgid "Large LED and icon"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:26
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:48
+msgid "Small LED and speed"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:27
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:49
+msgid "Speed only"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:28
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:50
+msgid "Small LED only"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:29
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:51
+msgid "Large LED only"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:38
+msgid "Default mode"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:39
+msgid ""
+"Mode applied when the extension is loaded. “None” keeps the last used mode."
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:43
+msgid "None"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:62
+msgid "Appearance"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:67
+msgid "Color of the activity LED"
+msgstr ""
+
+#: harddiskledNG@lauinger-clan.de/ui/prefs.ui:72
+msgid "Reset to default"
+msgstr ""
