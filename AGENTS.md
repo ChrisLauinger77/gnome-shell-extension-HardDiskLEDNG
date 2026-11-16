@@ -165,7 +165,9 @@ Notes:
   panel label.
 - Display-mode changes redraw the current sample without reading disk counters
   or advancing the sampler's timestamp.
-- The eight supported display modes are indexed 0 through 7. Clicking the
+- The eight supported display modes are indexed 0 through 7 and described by
+  the `MODES` table in `extension.js`, in the same order as the combo rows in
+  `ui/prefs.ui` and the schema's `mode` range. Clicking the
   indicator updates the `mode` setting; the settings-change handler updates
   the view. Preserve this flow so preferences and panel clicks stay in sync.
 - `defaultmode` uses `-1` for "None", which preserves the last active mode.

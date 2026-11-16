@@ -8,6 +8,18 @@ import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import { DiskStatsSampler } from "./lib/diskStats.js";
 import { readDiskStats } from "./lib/diskStatsReader.js";
 
+// display modes, indexed by the "mode" setting; ui/prefs.ui lists them in the same order
+const MODES = [
+    { speed: true, diskIcon: true, led: true, largeLed: false }, // small LED, speed and icon
+    { speed: true, diskIcon: true, led: true, largeLed: true }, // large LED, speed and icon
+    { speed: false, diskIcon: true, led: true, largeLed: false }, // small LED and icon
+    { speed: false, diskIcon: true, led: true, largeLed: true }, // large LED and icon
+    { speed: true, diskIcon: false, led: true, largeLed: false }, // small LED and speed
+    { speed: true, diskIcon: false, led: false, largeLed: false }, // speed only
+    { speed: false, diskIcon: false, led: true, largeLed: false }, // small LED only
+    { speed: false, diskIcon: false, led: true, largeLed: true }, // large LED only
+];
+
 export default class HardDiskLEDNGExtension extends Extension {
     refreshTime = 2.0; // in seconds
 
@@ -28,8 +40,8 @@ export default class HardDiskLEDNGExtension extends Extension {
     ioSpeedIcon = null;
 
     changeMode(step) {
-        // step forward (1) or backward (-1) through the eight modes, wrapping at both ends
-        const mode = (this.mode + step + 8) % 8;
+        // step forward (1) or backward (-1) through the modes, wrapping at both ends
+        const mode = (this.mode + step + MODES.length) % MODES.length;
         // the 'changed::mode' handler updates this.mode and refreshes the view
         this.settings.set_int("mode", mode);
     }
@@ -67,21 +79,10 @@ export default class HardDiskLEDNGExtension extends Extension {
     }
 
     updateVisibility() {
-        if ([2, 3, 6, 7].includes(this.mode)) {
-            this.ioSpeed.hide();
-        } else {
-            this.ioSpeed.show();
-        }
-        if ([4, 5, 6, 7].includes(this.mode)) {
-            this.ioSpeedStaticIcon.hide();
-        } else {
-            this.ioSpeedStaticIcon.show();
-        }
-        if (this.mode === 5) {
-            this.ioSpeedIcon.hide();
-        } else {
-            this.ioSpeedIcon.show();
-        }
+        const { speed, diskIcon, led } = MODES[this.mode];
+        this.ioSpeed.visible = speed;
+        this.ioSpeedStaticIcon.visible = diskIcon;
+        this.ioSpeedIcon.visible = led;
     }
 
     async parseStat() {
@@ -112,7 +113,7 @@ export default class HardDiskLEDNGExtension extends Extension {
     updateDisplay(speed) {
         // a null speed means the last disk read failed
         this.updateVisibility();
-        this.ioSpeedIcon.icon_size = [1, 3, 7].includes(this.mode) ? 12 : 8;
+        this.ioSpeedIcon.icon_size = MODES[this.mode].largeLed ? 12 : 8;
         this.ioSpeedIcon.opacity = speed !== null && speed > this.ledMinThreshold ? 255 : 0;
         this.ioSpeed.set_text(speed === null ? "--" : this.speedToString(speed));
     }
