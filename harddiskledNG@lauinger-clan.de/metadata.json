@@ -1,5 +1,5 @@
 {
-    "description": "Show harddisk activity with IO speed and an LED. Click to cycle through display modes.",
+    "description": "Show harddisk activity with IO speed and an LED. Left-click to cycle through display modes, right-click to cycle back, and middle-click to open the preferences.",
     "name": "Harddisk LED NG",
     "settings-schema": "org.gnome.shell.extensions.HardDiskLEDNG",
     "gettext-domain": "harddiskledNG@lauinger-clan.de",

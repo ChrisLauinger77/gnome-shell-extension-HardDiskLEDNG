@@ -189,9 +189,10 @@ Notes:
   `Main.panel.addToStatusArea()` under the extension UUID; destroying it in
   `disable()` also removes the status-area entry. Handle clicks with
   `Clutter.ClickGesture` actions (primary cycles the mode forward, secondary
-  backward, middle opens the preferences) rather than connecting raw event signals such as
-  `button-press-event`, which GNOME 51 deprecates. Treat changes to this Shell
-  integration as GNOME-version-sensitive.
+  backward, middle opens the preferences) rather than connecting raw event
+  signals such as `button-press-event`, which GNOME 51 deprecates. Keep the
+  click actions in sync with the metadata description and the README. Treat
+  changes to this Shell integration as GNOME-version-sensitive.
 
 ## Validation Checklist
 
