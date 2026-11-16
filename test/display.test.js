@@ -117,12 +117,14 @@ function createIndicator(t) {
                 getSettings() {
                     return settings;
                 }
+                getLogger() {
+                    return { error: (...args) => errors.push(args) };
+                }
                 openPreferences() {
                     preferencesOpened++;
                 }
             },
             DiskStatsSampler,
-            console: { error: (...args) => errors.push(args) },
             readDiskStats: (cancellable) =>
                 new Promise((resolve, reject) => {
                     requests.push({ cancellable, resolve, reject });
@@ -341,7 +343,7 @@ test("failed reads turn the LED off, log once per series, and a later tick can r
     assert.equal(indicator.ioSpeedIcon.opacity, 0);
     assert.equal(indicator.readCancellable, null);
     assert.equal(fixture.errors.length, 1);
-    assert.match(fixture.errors[0][0], /^Harddisk LED NG: /);
+    assert.equal(fixture.errors[0][0], "Failed to read disk statistics");
     assert.equal(fixture.errors[0][1].message, "disk read failed");
     fixture.tick();
     await fixture.fail(3);

@@ -127,6 +127,9 @@ Notes:
   metadata, schema, packaging, or user-data behavior that may affect
   extensions.gnome.org review.
 - Use modern GJS ES modules and imports consistent with the existing files.
+- Log through `this.getLogger()` (added in GNOME 48), which prefixes messages
+  with the extension name, rather than calling `console` directly. Keep
+  logging to important messages and errors.
 - Keep Gtk/Gdk/Adw imports in the preferences process and Shell-only imports
   such as St/Clutter in the runtime process.
 - Keep settings schema keys, display-mode indices, UI widget IDs, and
@@ -163,8 +166,8 @@ Notes:
   Timer callbacks return `GLib.SOURCE_CONTINUE`, rather than a Promise.
 - A failed read sets the last speed to `null`: the LED turns off, the label
   shows `--` until a read succeeds, and only the first failure of a series
-  is logged with `console.error()`. Do not put raw error messages in the
-  panel label.
+  is logged with `this.getLogger().error()`. Do not put raw error messages in
+  the panel label.
 - Display-mode changes redraw the current sample without reading disk counters
   or advancing the sampler's timestamp.
 - The eight supported display modes are indexed 0 through 7 and described by

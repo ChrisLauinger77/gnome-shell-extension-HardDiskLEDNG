@@ -102,7 +102,8 @@ export default class HardDiskLEDNGExtension extends Extension {
             if (cancellable.is_cancelled()) return;
 
             // the timer retries every refresh, so only log the first failure of a series
-            if (this.lastSpeed !== null) console.error(`${this.metadata.name}: failed to read disk statistics`, error);
+            // the extension logger prefixes messages with the extension name
+            if (this.lastSpeed !== null) this.getLogger().error("Failed to read disk statistics", error);
             this.lastSpeed = null;
             this.updateDisplay(null);
         } finally {
