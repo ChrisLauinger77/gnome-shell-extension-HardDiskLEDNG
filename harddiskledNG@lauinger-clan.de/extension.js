@@ -53,9 +53,6 @@ export default class HardDiskLEDNGExtension extends Extension {
 
     onModeChanged() {
         this.mode = this.settings.get_int("mode");
-        if (this.mode > 7) {
-            this.mode = 0;
-        }
         this.updateDisplay(this.lastSpeed);
     }
 
@@ -148,15 +145,13 @@ export default class HardDiskLEDNGExtension extends Extension {
         this.lastSpeed = 0;
         this.settings = this.getSettings();
 
-        // apply the configured default mode on load, -1 (None) keeps the last used mode
+        // apply the configured default mode on load, -1 (None) keeps the last used mode;
+        // the schema ranges keep both keys within the valid modes
         const defaultMode = this.settings.get_int("defaultmode");
-        if (defaultMode >= 0 && defaultMode <= 7) {
+        if (defaultMode >= 0) {
             this.settings.set_int("mode", defaultMode);
         }
         this.mode = this.settings.get_int("mode");
-        if (this.mode > 7) {
-            this.mode = 0;
-        }
 
         // menu-less panel button, clicks are handled by addClickGestures()
         this.button = new PanelMenu.Button(0.0, this.metadata.name, true);
