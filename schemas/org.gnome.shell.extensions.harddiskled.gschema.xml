@@ -13,5 +13,10 @@
         <summary>Default display mode</summary>
         <description>Mode applied when the extension is loaded. -1 (None) keeps the last used mode.</description>
       </key>
+      <key name="led-color" type="s">
+        <default>'#00ff00'</default>
+        <summary>LED color</summary>
+        <description>Color of the activity LED as a CSS color string.</description>
+      </key>
   </schema>
 </schemalist>

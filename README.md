@@ -10,3 +10,4 @@ Open the preferences dialog (`gnome-extensions prefs harddiskled@bijidroid.gmail
 
 - **Mode** – select the currently active display mode
 - **Default mode** – mode applied when the extension is loaded; *None* keeps the last used mode
+- **LED color** – pick the color of the activity LED (reset button restores the default green)

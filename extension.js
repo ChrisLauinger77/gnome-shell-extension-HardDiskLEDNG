@@ -13,6 +13,7 @@ export default class HardDiskLEDExtension extends Extension {
 
     settings = null;
     settingsChangedId = null;
+    colorChangedId = null;
     button = null
     timeout = null
     cur = null
@@ -45,6 +46,16 @@ export default class HardDiskLEDExtension extends Extension {
             this.mode = 0;
         }
         this.parseStat(true);
+    }
+
+    applyLedColor() {
+        const color = this.settings.get_string('led-color');
+        // only allow plain CSS color values (#rrggbb, rgb(...), names) in the inline style
+        if (/^[#a-zA-Z0-9(),.\s%]+$/.test(color)) {
+            this.ioSpeedIcon.set_style(`color: ${color};`);
+        } else {
+            this.ioSpeedIcon.set_style(null);
+        }
     }
 
     parseStat(forceDot = false) {
@@ -214,6 +225,9 @@ export default class HardDiskLEDExtension extends Extension {
         // react to mode changes from the preferences dialog (and from clicking)
         this.settingsChangedId = this.settings.connect('changed::mode', this.onModeChanged.bind(this));
 
+        this.applyLedColor();
+        this.colorChangedId = this.settings.connect('changed::led-color', this.applyLedColor.bind(this));
+
         // the monotonic time, in microseconds
         this.timeout = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, 
@@ -230,6 +244,10 @@ export default class HardDiskLEDExtension extends Extension {
         if (this.settingsChangedId) {
             this.settings.disconnect(this.settingsChangedId);
             this.settingsChangedId = null;
+        }
+        if (this.colorChangedId) {
+            this.settings.disconnect(this.colorChangedId);
+            this.colorChangedId = null;
         }
         Main.panel._rightBox.remove_child(this.button);
         this.button.destroy();

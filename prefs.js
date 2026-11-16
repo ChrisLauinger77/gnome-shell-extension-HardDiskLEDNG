@@ -1,3 +1,4 @@
+import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -26,7 +27,11 @@ export default class HardDiskLEDPreferences extends ExtensionPreferences {
             value => (value < 0 || value >= MODE_COUNT) ? 0 : value + 1,
             index => index - 1);
 
-        window.set_default_size(560, 380);
+        this._bindColor(settings, 'led-color',
+            builder.get_object('button_ledcolor'),
+            builder.get_object('button_ledcolor_reset'));
+
+        window.set_default_size(560, 480);
         window.add(builder.get_object('page_general'));
     }
 
@@ -45,5 +50,33 @@ export default class HardDiskLEDPreferences extends ExtensionPreferences {
                 row.set_selected(index);
         });
         row.connect('destroy', () => settings.disconnect(id));
+    }
+
+    _bindColor(settings, key, button, resetButton) {
+        const toRgba = value => {
+            const rgba = new Gdk.RGBA();
+            if (!rgba.parse(value))
+                rgba.parse(settings.get_default_value(key).deepUnpack());
+            return rgba;
+        };
+
+        button.set_rgba(toRgba(settings.get_string(key)));
+
+        button.connect('notify::rgba', () => {
+            const value = button.get_rgba().to_string();
+            if (!toRgba(settings.get_string(key)).equal(button.get_rgba()))
+                settings.set_string(key, value);
+        });
+
+        const id = settings.connect(`changed::${key}`, () => {
+            const rgba = toRgba(settings.get_string(key));
+            if (!rgba.equal(button.get_rgba()))
+                button.set_rgba(rgba);
+            resetButton.set_sensitive(settings.get_user_value(key) !== null);
+        });
+        button.connect('destroy', () => settings.disconnect(id));
+
+        resetButton.set_sensitive(settings.get_user_value(key) !== null);
+        resetButton.connect('clicked', () => settings.reset(key));
     }
 }
