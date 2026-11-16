@@ -4,12 +4,12 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { default as Gio } from "gi://Gio";
 import GLib from "gi://GLib";
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
-import { DiskStatsSampler, parseDiskStats } from "./lib/diskStats.js";
+import { DiskStatsSampler } from "./lib/diskStats.js";
+import { readDiskStats } from "./lib/diskStatsReader.js";
 
 export default class HardDiskLEDNGExtension extends Extension {
     refreshTime = 2.0; // in seconds
 
-    ledThreshold = 500000;
     ledMinThreshold = 100000;
 
     settings = null;
@@ -20,6 +20,7 @@ export default class HardDiskLEDNGExtension extends Extension {
     ioSpeed = null;
     lastSpeed = null;
     sampler = null;
+    readCancellable = null;
     mode = null;
     layoutManager = null;
     ioSpeedStaticIcon = null;
@@ -39,7 +40,7 @@ export default class HardDiskLEDNGExtension extends Extension {
         if (this.mode > 7) {
             this.mode = 0;
         }
-        this.updateDisplay(this.lastSpeed, true);
+        this.updateDisplay(this.lastSpeed);
     }
 
     applyLedColor() {
@@ -70,50 +71,30 @@ export default class HardDiskLEDNGExtension extends Extension {
         }
     }
 
-    readDiskStats() {
-        const devices = new Set();
-        const enumerator = Gio.File.new_for_path("/sys/block").enumerate_children(
-            "standard::name,standard::symlink-target",
-            Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
-            null
-        );
-        try {
-            for (let info = enumerator.next_file(null); info !== null; info = enumerator.next_file(null)) {
-                if (!info.get_symlink_target().includes("/virtual/")) devices.add(info.get_name());
-            }
-        } finally {
-            enumerator.close(null);
-        }
+    async parseStat() {
+        if (this.readCancellable) return;
 
-        const [, contents] = Gio.File.new_for_path("/proc/diskstats").load_contents(null);
-        return parseDiskStats(new TextDecoder().decode(contents), devices);
-    }
-
-    parseStat(forceDot = false) {
+        const cancellable = new Gio.Cancellable();
+        const sampler = this.sampler;
+        this.readCancellable = cancellable;
         try {
-            const counters = this.readDiskStats();
-            const speed = this.sampler.sample(counters, GLib.get_monotonic_time() / 1000000);
-            this.updateDisplay(speed, forceDot);
+            const counters = await readDiskStats(cancellable);
+            if (cancellable.is_cancelled()) return;
+
+            const speed = sampler.sample(counters, GLib.get_monotonic_time() / 1000000);
+            this.updateDisplay(speed);
             this.lastSpeed = speed;
-        } catch (e) {
-            this.ioSpeed.set_text(e.message);
+        } catch (error) {
+            if (!cancellable.is_cancelled()) this.ioSpeed.set_text(error.message);
+        } finally {
+            if (this.readCancellable === cancellable) this.readCancellable = null;
         }
-        return true;
     }
 
-    updateDisplay(speed, forceDot = false) {
-        let dot = " ";
-        if (speed > this.lastSpeed || forceDot || speed > this.ledThreshold) {
-            if (speed > this.ledMinThreshold) {
-                if ([0, 2, 4, 6].includes(this.mode)) {
-                    dot = "●";
-                } else if ([1, 3, 7].includes(this.mode)) {
-                    dot = "⬤";
-                }
-            }
-        }
+    updateDisplay(speed) {
         this.updateVisibility();
-        this.ioSpeedIcon.set_text(dot);
+        this.ioSpeedIcon.icon_size = [1, 3, 7].includes(this.mode) ? 12 : 8;
+        this.ioSpeedIcon.opacity = speed > this.ledMinThreshold ? 255 : 0;
         this.ioSpeed.set_text(this.speedToString(speed));
     }
 
@@ -176,13 +157,15 @@ export default class HardDiskLEDNGExtension extends Extension {
         });
 
         this.ioSpeed = new St.Label({
-            text: "---",
+            text: "0B/s",
             y_align: Clutter.ActorAlign.CENTER,
             style_class: "harddiskledng-label",
         });
 
-        this.ioSpeedIcon = new St.Label({
-            text: "",
+        this.ioSpeedIcon = new St.Icon({
+            gicon: Gio.icon_new_for_string(`${this.path}/icons/activity-led-symbolic.svg`),
+            icon_size: 8,
+            opacity: 0,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: "harddiskledng-icon",
         });
@@ -202,14 +185,22 @@ export default class HardDiskLEDNGExtension extends Extension {
         this.applyLedColor();
         this.colorChangedId = this.settings.connect("changed::led-color", this.applyLedColor.bind(this));
 
-        this.parseStat(true);
-        this.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.refreshTime * 1000, () => this.parseStat(true));
+        this.updateDisplay(0);
+        this.parseStat();
+        this.timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.refreshTime * 1000, () => {
+            this.parseStat();
+            return GLib.SOURCE_CONTINUE;
+        });
     }
 
     disable() {
         if (this.timeout) {
             GLib.source_remove(this.timeout);
             this.timeout = null;
+        }
+        if (this.readCancellable) {
+            this.readCancellable.cancel();
+            this.readCancellable = null;
         }
         if (this.settingsChangedId) {
             this.settings.disconnect(this.settingsChangedId);

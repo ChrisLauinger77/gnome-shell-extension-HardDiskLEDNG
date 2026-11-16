@@ -1,148 +1,265 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { setImmediate } from "node:timers/promises";
 import { URL } from "node:url";
 import { runInNewContext } from "node:vm";
-import { DiskStatsSampler, parseDiskStats } from "../harddiskledNG@lauinger-clan.de/lib/diskStats.js";
+import { DiskStatsSampler } from "../harddiskledNG@lauinger-clan.de/lib/diskStats.js";
 
 const source = readFileSync(new URL("../harddiskledNG@lauinger-clan.de/extension.js", import.meta.url), "utf8");
 
-function createIndicator() {
-    let contents = diskLine(8, 0, "sda", 1000);
+class Actor {
+    visible = true;
+    destroyed = false;
+    children = [];
+
+    constructor(properties) {
+        Object.assign(this, properties);
+    }
+
+    show() {
+        this.visible = true;
+    }
+    hide() {
+        this.visible = false;
+    }
+    set_style(style) {
+        this.style = style;
+    }
+    add_child(child) {
+        this.children.push(child);
+    }
+    set_child(child) {
+        this.children = [child];
+    }
+    connect() {
+        return 1;
+    }
+    destroy() {
+        this.destroyed = true;
+        for (const child of this.children) child.destroy();
+    }
+}
+
+class Icon extends Actor {}
+class Label extends Actor {
+    set_text(text) {
+        assert.equal(this.destroyed, false, "A destroyed label was updated");
+        this.text = text;
+    }
+}
+
+class Cancellable {
+    cancelled = false;
+    cancel() {
+        this.cancelled = true;
+    }
+    is_cancelled() {
+        return this.cancelled;
+    }
+}
+
+function counters(read) {
+    return new Map([["8:0:sda", { read, written: 0 }]]);
+}
+
+function createIndicator(t) {
     let time = 0;
-    const devices = [
-        { name: "sda", target: "../devices/pci0000:00/ata1/block/sda" },
-        { name: "nvme0n1", target: "../devices/pci0000:00/nvme/nvme0/nvme0n1" },
-        { name: "loop16", target: "../devices/virtual/block/loop16" },
-    ];
-    // Stub GI imports while exercising the actual refresh and display logic.
+    let mode = 0;
+    let timer = null;
+    let signalId = 0;
+    const handlers = new Map();
+    const requests = [];
+    const settings = {
+        get_int: (key) => (key === "defaultmode" ? -1 : mode),
+        get_string: () => "#00ff00",
+        set_int(_key, value) {
+            mode = value;
+            for (const { signal, callback } of handlers.values()) {
+                if (signal === "changed::mode") callback();
+            }
+        },
+        connect(signal, callback) {
+            handlers.set(++signalId, { signal, callback });
+            return signalId;
+        },
+        disconnect(id) {
+            handlers.delete(id);
+        },
+    };
     const Extension = runInNewContext(
         source.replace(/^import .*;\n/gm, "").replace("export default class", "class") + "\nHardDiskLEDNGExtension;",
         {
-            Extension: class {},
-            TextDecoder,
+            Extension: class {
+                path = "/test/extension";
+                getSettings() {
+                    return settings;
+                }
+            },
             DiskStatsSampler,
-            parseDiskStats,
-            GLib: { get_monotonic_time: () => time * 1000000 },
-            Gio: {
-                FileQueryInfoFlags: { NOFOLLOW_SYMLINKS: 1 },
-                File: {
-                    new_for_path(path) {
-                        if (path === "/sys/block") {
-                            return {
-                                enumerate_children() {
-                                    let index = 0;
-                                    return {
-                                        next_file() {
-                                            const device = devices[index++];
-                                            if (!device) return null;
-                                            return {
-                                                get_name: () => device.name,
-                                                get_symlink_target: () => device.target,
-                                            };
-                                        },
-                                        close() {},
-                                    };
-                                },
-                            };
-                        }
-                        assert.equal(path, "/proc/diskstats");
-                        return { load_contents: () => [true, new TextEncoder().encode(contents)] };
-                    },
+            readDiskStats: (cancellable) =>
+                new Promise((resolve, reject) => {
+                    requests.push({ cancellable, resolve, reject });
+                }),
+            Gio: { Cancellable, icon_new_for_string: (path) => path },
+            St: { Button: Actor, BoxLayout: Actor, Label, Icon },
+            Clutter: { ActorAlign: { CENTER: 0 }, Orientation: { HORIZONTAL: 0 } },
+            Main: { panel: { _rightBox: { insert_child_at_index() {}, remove_child() {} } } },
+            GLib: {
+                PRIORITY_DEFAULT: 0,
+                SOURCE_CONTINUE: true,
+                get_monotonic_time: () => time * 1000000,
+                timeout_add(_priority, _interval, callback) {
+                    timer = callback;
+                    return 1;
+                },
+                source_remove() {
+                    timer = null;
                 },
             },
         }
     );
     const indicator = new Extension();
-    indicator.ioSpeed = createActor();
-    indicator.ioSpeedStaticIcon = createActor();
-    indicator.ioSpeedIcon = createActor();
-    indicator.sampler = new DiskStatsSampler();
-    indicator.lastSpeed = 0;
-    indicator.mode = 0;
+    indicator.enable();
+    t.after(() => {
+        if (indicator.button) indicator.disable();
+    });
     return {
         indicator,
-        setSample(nextContents, nextTime) {
-            contents = nextContents;
+        requests,
+        settings,
+        tick() {
+            assert.notEqual(timer, null);
+            return timer();
+        },
+        async finish(index, read, nextTime) {
             time = nextTime;
+            requests[index].resolve(counters(read));
+            await setImmediate();
+        },
+        async fail(index) {
+            requests[index].reject(new Error("disk read failed"));
+            await setImmediate();
         },
     };
 }
 
-function diskLine(major, minor, name, read) {
-    return `${major} ${minor} ${name} 1 0 ${read} 0 1 0 0 0 0 0 0\n`;
-}
-
-function createActor() {
-    // Clutter actors expose show()/hide(), not Gtk's set_visible().
-    return {
-        visible: true,
-        text: "",
-        show() {
-            this.visible = true;
-        },
-        hide() {
-            this.visible = false;
-        },
-        set_text(text) {
-            this.text = text;
-        },
-    };
-}
-
-test("disk activity renders every display mode using Shell actor visibility methods", () => {
-    const { indicator, setSample } = createIndicator();
-    indicator.parseStat(true);
-    // Columns: mode, speed visible, disk icon visible, LED visible, active LED.
+test("every display mode uses a symbolic LED icon with the correct size and visibility", async (t) => {
+    const fixture = createIndicator(t);
+    const { indicator, settings } = fixture;
+    assert.ok(indicator.ioSpeedIcon instanceof Icon);
+    assert.equal(indicator.ioSpeedIcon.gicon, "/test/extension/icons/activity-led-symbolic.svg");
+    assert.equal(indicator.ioSpeedIcon.style, "color: #00ff00;");
+    await fixture.finish(0, 1000, 0);
     const modes = [
-        [0, true, true, true, "●"],
-        [1, true, true, true, "⬤"],
-        [2, false, true, true, "●"],
-        [3, false, true, true, "⬤"],
-        [4, true, false, true, "●"],
-        [5, true, false, false, " "],
-        [6, false, false, true, "●"],
-        [7, false, false, true, "⬤"],
+        [0, true, true, true, 8],
+        [1, true, true, true, 12],
+        [2, false, true, true, 8],
+        [3, false, true, true, 12],
+        [4, true, false, true, 8],
+        [5, true, false, false, 8],
+        [6, false, false, true, 8],
+        [7, false, false, true, 12],
     ];
-
     let sample = 0;
-    for (const [mode, speedVisible, iconVisible, ledVisible, dot] of [...modes, ...modes.slice().reverse()]) {
+    for (const [mode, speedVisible, iconVisible, ledVisible, size] of [...modes, ...modes.slice().reverse()]) {
         sample++;
-        setSample(diskLine(8, 0, "sda", 1000 + sample * 2000), sample * 2);
-        indicator.mode = mode;
-        assert.equal(indicator.parseStat(true), true);
+        settings.set_int("mode", mode);
+        assert.equal(fixture.tick(), true);
+        // eslint-disable-next-line no-await-in-loop -- Verify transitions on the same sampler and actors.
+        await fixture.finish(sample, 1000 + sample * 2000, sample * 2);
         assert.equal(indicator.ioSpeed.text, "512K/s", `mode ${mode}: refresh failed`);
         assert.equal(indicator.ioSpeed.visible, speedVisible, `mode ${mode}: speed visibility`);
         assert.equal(indicator.ioSpeedStaticIcon.visible, iconVisible, `mode ${mode}: disk icon visibility`);
         assert.equal(indicator.ioSpeedIcon.visible, ledVisible, `mode ${mode}: LED visibility`);
-        assert.equal(indicator.ioSpeedIcon.text, dot, `mode ${mode}: LED glyph`);
+        assert.equal(indicator.ioSpeedIcon.icon_size, size, `mode ${mode}: LED size`);
+        assert.equal(indicator.ioSpeedIcon.opacity, 255, `mode ${mode}: active LED`);
     }
 });
 
-test("sysfs disk selection includes NVMe minor 4 and excludes partitions and virtual disks", () => {
-    const { indicator, setSample } = createIndicator();
-    setSample(
-        diskLine(8, 0, "sda", 1000) +
-            diskLine(259, 4, "nvme0n1", 2000) +
-            diskLine(259, 5, "nvme0n1p1", 2000) +
-            diskLine(7, 16, "loop16", 5000),
-        0
-    );
-    assert.deepEqual([...indicator.readDiskStats().keys()], ["8:0:sda", "259:4:nvme0n1"]);
+test("idle samples make the LED transparent while preserving its space", async (t) => {
+    const fixture = createIndicator(t);
+    await fixture.finish(0, 1000, 0);
+    fixture.tick();
+    await fixture.finish(1, 3000, 2);
+    assert.equal(fixture.indicator.ioSpeedIcon.opacity, 255);
+    fixture.tick();
+    await fixture.finish(2, 3000, 4);
+    assert.equal(fixture.indicator.ioSpeed.text, "0B/s");
+    assert.equal(fixture.indicator.ioSpeedIcon.opacity, 0);
+    assert.equal(fixture.indicator.ioSpeedIcon.visible, true);
 });
 
-test("changing display mode reuses the current speed without advancing the disk sample", () => {
-    const { indicator, setSample } = createIndicator();
-    indicator.parseStat(true);
-    setSample(diskLine(8, 0, "sda", 3000), 2);
-    indicator.parseStat(true);
-    const previousCounters = indicator.sampler.previousCounters;
-    setSample(diskLine(8, 0, "sda", 3001), 2.1);
-    indicator.settings = { get_int: () => 7 };
-    indicator.onModeChanged();
-    assert.equal(indicator.mode, 7);
-    assert.equal(indicator.ioSpeed.text, "512K/s");
-    assert.equal(indicator.ioSpeedIcon.text, "⬤");
-    assert.equal(indicator.sampler.previousTime, 2);
-    assert.equal(indicator.sampler.previousCounters, previousCounters);
+test("changing display mode reuses the current speed without advancing the disk sample", async (t) => {
+    const fixture = createIndicator(t);
+    await fixture.finish(0, 1000, 0);
+    fixture.tick();
+    await fixture.finish(1, 3000, 2);
+    const sampler = fixture.indicator.sampler;
+    const previousCounters = sampler.previousCounters;
+    fixture.settings.set_int("mode", 7);
+    assert.equal(fixture.indicator.mode, 7);
+    assert.equal(fixture.indicator.ioSpeed.text, "512K/s");
+    assert.equal(fixture.indicator.ioSpeedIcon.icon_size, 12);
+    assert.equal(fixture.requests.length, 2);
+    assert.equal(sampler.previousTime, 2);
+    assert.equal(sampler.previousCounters, previousCounters);
+});
+
+test("timer ticks do not start overlapping disk reads", async (t) => {
+    const fixture = createIndicator(t);
+    assert.equal(fixture.tick(), true);
+    assert.equal(fixture.requests.length, 1);
+    await fixture.indicator.parseStat();
+    assert.equal(fixture.requests.length, 1);
+    await fixture.finish(0, 1000, 0);
+    fixture.tick();
+    assert.equal(fixture.requests.length, 2);
+});
+
+test("disable cancels a pending read and ignores its late completion", async (t) => {
+    const fixture = createIndicator(t);
+    const led = fixture.indicator.ioSpeedIcon;
+    const speed = fixture.indicator.ioSpeed;
+    fixture.indicator.disable();
+    assert.equal(fixture.requests[0].cancellable.is_cancelled(), true);
+    assert.equal(led.destroyed, true);
+    assert.equal(speed.destroyed, true);
+    await fixture.finish(0, 1000, 2);
+    assert.equal(fixture.indicator.sampler, null);
+    assert.equal(fixture.indicator.ioSpeed, null);
+    assert.equal(fixture.indicator.readCancellable, null);
+});
+
+test("a cancelled read cannot update a newly enabled instance or clear its pending read", async (t) => {
+    const fixture = createIndicator(t);
+    fixture.indicator.disable();
+    fixture.indicator.enable();
+    const activeRead = fixture.indicator.readCancellable;
+    await fixture.finish(0, 1000000, 0);
+    assert.equal(fixture.indicator.ioSpeed.text, "0B/s");
+    assert.equal(fixture.indicator.sampler.previousCounters, null);
+    assert.equal(fixture.indicator.readCancellable, activeRead);
+    await fixture.finish(1, 1000, 0);
+    fixture.tick();
+    await fixture.finish(2, 3000, 2);
+    assert.equal(fixture.indicator.ioSpeed.text, "512K/s");
+});
+
+test("failed reads are reported and a later tick can retry", async (t) => {
+    const fixture = createIndicator(t);
+    await fixture.fail(0);
+    assert.equal(fixture.indicator.ioSpeed.text, "disk read failed");
+    assert.equal(fixture.indicator.readCancellable, null);
+    fixture.tick();
+    await fixture.finish(1, 1000, 2);
+    assert.equal(fixture.indicator.ioSpeed.text, "0B/s");
+});
+
+test("cancellation errors arriving after disable do not update destroyed widgets", async (t) => {
+    const fixture = createIndicator(t);
+    fixture.indicator.disable();
+    await fixture.fail(0);
+    assert.equal(fixture.indicator.ioSpeed, null);
+    assert.equal(fixture.indicator.readCancellable, null);
 });

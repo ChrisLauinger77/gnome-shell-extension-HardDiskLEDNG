@@ -36,10 +36,17 @@ future changes to the schema ID or path as settings migrations.
 - `harddiskledNG@lauinger-clan.de/stylesheet.css`: panel indicator styling.
 - `harddiskledNG@lauinger-clan.de/lib/diskStats.js`: diskstats parsing and
   per-device rate sampling, shared by the runtime and Node tests.
+- `harddiskledNG@lauinger-clan.de/lib/diskStatsReader.js`: cancellable
+  asynchronous sysfs enumeration and diskstats reads using native Gio APIs.
+- `harddiskledNG@lauinger-clan.de/icons/activity-led-symbolic.svg`: symbolic
+  LED artwork loaded by the panel's `St.Icon`.
 - `test/diskStats.test.js`: coverage for disk selection, elapsed sampling time,
   counter resets, and device additions/removals.
 - `test/display.test.js`: runtime refresh and display-mode coverage with
-  stubbed Shell actors and filesystem reads.
+  stubbed Shell actors, including cancellation, overlapping reads, and
+  disable/re-enable while a read is pending.
+- `test/diskStatsReader.test.js`: asynchronous Gio read, enumeration, cleanup,
+  and cancellation coverage.
 - `test/tooling.test.js`: Node test-runner coverage for version updates,
   staged-version hooks, packaging paths, and command failure handling. Tests
   use temporary checkouts and mocked GNOME commands.
@@ -123,6 +130,10 @@ Notes:
   counter deltas, elapsed monotonic time, and a 512-byte sector conversion.
   New or reset devices establish a fresh baseline. Removing a disk must not
   subtract its lifetime counters from the total. Clear the sampler on disable.
+- Filesystem reads and enumeration must remain asynchronous. Each in-flight
+  read owns a `Gio.Cancellable`; cancel it in `disable()`. Ignore cancelled
+  completions and keep old reads from clearing a new session's cancellable.
+  Timer callbacks return `GLib.SOURCE_CONTINUE`, rather than a Promise.
 - Display-mode changes redraw the current sample without reading disk counters
   or advancing the sampler's timestamp.
 - The eight supported display modes are indexed 0 through 7. Clicking the
@@ -134,6 +145,9 @@ Notes:
 - LED color is persisted as a CSS color string. Preserve validation before
   using it in the indicator's inline style and keep the reset action tied to
   the schema default.
+- Use the symbolic `St.Icon` for the LED, with 8-pixel and 12-pixel sizes for
+  small and large modes. Set opacity to zero when idle to preserve spacing;
+  do not replace the icon with a Unicode glyph or ASCII indicator.
 - Preferences keep a settings reference for the window lifetime and disconnect
   settings-change handlers when the associated widgets are destroyed. Preserve
   this ownership when adding bindings.

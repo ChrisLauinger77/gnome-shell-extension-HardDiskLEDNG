@@ -1,8 +1,19 @@
 # Harddisk LED NG
 
+<div align="center">
+
+![Gnome Extensions Downloads](https://img.shields.io/gnome-extensions/dt/HardDiskLEDNG@lauinger-clan.de) ![GNOME Shell](https://img.shields.io/badge/GNOME-48%20--%2051-blue?logo=gnome&logoColor=white) ![GitHub License](https://img.shields.io/github/license/ChrisLauinger77/gnome-shell-extension-HardDiskLEDNG)
+
+</div>
 GNOME Shell extension that shows harddisk activity with IO speed and an LED. Click the indicator to cycle through display modes.
 
 Fork of [Harddisk LED](https://extensions.gnome.org/extension/988/harddisk-led/).
+
+<p align="left">
+  <a href="https://extensions.gnome.org/extension/11798/harddisk-led-ng/">
+    <img alt="Get it on GNOME Extensions" width="228" src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true"/>
+  </a>
+</p>
 
 ## Development
 
@@ -24,5 +35,5 @@ Packaging requires `gnome-extensions`; version commands and hooks require Node.j
 Open the preferences dialog (`gnome-extensions prefs harddiskledNG@lauinger-clan.de`) to
 
 - **Mode** – select the currently active display mode
-- **Default mode** – mode applied when the extension is loaded; *None* keeps the last used mode
+- **Default mode** – mode applied when the extension is loaded; _None_ keeps the last used mode
 - **LED color** – pick the color of the activity LED (reset button restores the default green)
