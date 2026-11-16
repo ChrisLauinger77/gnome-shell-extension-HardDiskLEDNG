@@ -1,9 +1,9 @@
-import { default as Clutter } from "gi://Clutter";
-import { default as St } from "gi://St";
+import Clutter from "gi://Clutter";
+import Gio from "gi://Gio";
+import GLib from "gi://GLib";
+import St from "gi://St";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
-import { default as Gio } from "gi://Gio";
-import GLib from "gi://GLib";
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import { DiskStatsSampler } from "./lib/diskStats.js";
 import { readDiskStats } from "./lib/diskStatsReader.js";
