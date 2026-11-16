@@ -18,6 +18,7 @@ function createReader({ extraDevices = 0, cancelAt = null, failAt = null } = {})
         { name: "sda", target: "../devices/pci0000:00/ata1/block/sda" },
         { name: "nvme0n1", target: "../devices/pci0000:00/nvme/nvme0/nvme0n1" },
         { name: "loop16", target: "../devices/virtual/block/loop16" },
+        { name: "cciss!c0d0", target: "../devices/pci0000:00/cciss0/c0d0/block/cciss!c0d0" },
         ...Array.from({ length: extraDevices }, (_, i) => ({
             name: `sdx${i}`,
             target: `../devices/pci0000:00/block/sdx${i}`,
@@ -29,6 +30,7 @@ function createReader({ extraDevices = 0, cancelAt = null, failAt = null } = {})
             "259 4 nvme0n1 1 0 3000 0 1 0 4000 0 0 0 0",
             "259 5 nvme0n1p1 1 0 3000 0 1 0 4000 0 0 0 0",
             "7 16 loop16 1 0 5000 0 1 0 6000 0 0 0 0",
+            "104 0 cciss/c0d0 1 0 7000 0 1 0 8000 0 0 0 0",
         ].join("\n")
     );
     function deliver(stage, object, callback, value) {
@@ -96,7 +98,7 @@ function createReader({ extraDevices = 0, cancelAt = null, failAt = null } = {})
 
 test("asynchronous reads select physical whole disks and close the enumerator", async () => {
     const fixture = createReader();
-    assert.deepEqual([...(await fixture.read()).keys()], ["8:0:sda", "259:4:nvme0n1"]);
+    assert.deepEqual([...(await fixture.read()).keys()], ["8:0:sda", "259:4:nvme0n1", "104:0:cciss/c0d0"]);
     assert.deepEqual(fixture.events, ["open", "next", "next", "close", "load"]);
 });
 

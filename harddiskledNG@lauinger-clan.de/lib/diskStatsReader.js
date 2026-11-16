@@ -69,7 +69,8 @@ export async function readDiskStats(cancellable) {
             // eslint-disable-next-line no-await-in-loop -- Each batch advances the same enumerator cursor.
             batch = await nextDevices(enumerator, cancellable);
             for (const info of batch) {
-                if (!info.get_symlink_target().includes("/virtual/")) devices.add(info.get_name());
+                // sysfs replaces "/" in device names with "!", /proc/diskstats keeps the "/"
+                if (!info.get_symlink_target().includes("/virtual/")) devices.add(info.get_name().replaceAll("!", "/"));
             }
         } while (batch.length > 0);
     } finally {

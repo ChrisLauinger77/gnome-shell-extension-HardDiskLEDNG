@@ -151,7 +151,9 @@ Notes:
 - Runtime objects, timers, and settings connections belong to `enable()` and
   must be recreated cleanly when the extension is enabled again.
 - Whole physical disks are selected through `/sys/block`; virtual block
-  devices and partitions are excluded. Disk speed uses per-device read/write
+  devices and partitions are excluded. Sysfs writes `/` in device names as
+  `!` (for example `cciss!c0d0`); map it back before matching
+  `/proc/diskstats`. Disk speed uses per-device read/write
   counter deltas, elapsed monotonic time, and a 512-byte sector conversion.
   New or reset devices establish a fresh baseline. Removing a disk must not
   subtract its lifetime counters from the total. Clear the sampler on disable.
