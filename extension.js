@@ -12,6 +12,7 @@ export default class HardDiskLEDExtension extends Extension {
     ledMinThreshold = 100000;
 
     settings = null;
+    settingsChangedId = null;
     button = null
     timeout = null
     cur = null
@@ -30,11 +31,19 @@ export default class HardDiskLEDExtension extends Extension {
     }
 
     changeMode() {
-        this.mode++;
+        let mode = this.mode + 1;
+        if (mode > 7) {
+            mode = 0;
+        }
+        // the 'changed::mode' handler updates this.mode and refreshes the view
+        this.settings.set_int('mode', mode);
+    }
+
+    onModeChanged() {
+        this.mode = this.settings.get_int('mode');
         if (this.mode > 7) {
             this.mode = 0;
         }
-        this.settings.set_int('mode', this.mode);
         this.parseStat(true);
     }
 
@@ -151,7 +160,15 @@ export default class HardDiskLEDExtension extends Extension {
         this.init()
         this.settings = this.getSettings();
 
-        this.mode = this.settings.get_int('mode'); // default mode
+        // apply the configured default mode on load, -1 (None) keeps the last used mode
+        const defaultMode = this.settings.get_int('defaultmode');
+        if (defaultMode >= 0 && defaultMode <= 7) {
+            this.settings.set_int('mode', defaultMode);
+        }
+        this.mode = this.settings.get_int('mode');
+        if (this.mode > 7) {
+            this.mode = 0;
+        }
 
         this.button = new St.Button({
             style_class: 'panel-button',
@@ -193,6 +210,10 @@ export default class HardDiskLEDExtension extends Extension {
         this.button.set_child(this.layoutManager);
 
         Main.panel._rightBox.insert_child_at_index(this.button, 0);
+
+        // react to mode changes from the preferences dialog (and from clicking)
+        this.settingsChangedId = this.settings.connect('changed::mode', this.onModeChanged.bind(this));
+
         // the monotonic time, in microseconds
         this.timeout = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, 
@@ -205,6 +226,10 @@ export default class HardDiskLEDExtension extends Extension {
         if (this.timeout) {
             GLib.source_remove(this.timeout);
             this.timeout = null;
+        }
+        if (this.settingsChangedId) {
+            this.settings.disconnect(this.settingsChangedId);
+            this.settingsChangedId = null;
         }
         Main.panel._rightBox.remove_child(this.button);
         this.button.destroy();

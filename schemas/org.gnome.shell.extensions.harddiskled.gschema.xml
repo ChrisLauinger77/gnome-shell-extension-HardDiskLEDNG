@@ -4,6 +4,14 @@
       <key name="mode" type="i">
         <range min="0" max="10" />
         <default>0</default>
+        <summary>Display mode</summary>
+        <description>Currently active display mode (0-7).</description>
+      </key>
+      <key name="defaultmode" type="i">
+        <range min="-1" max="7" />
+        <default>-1</default>
+        <summary>Default display mode</summary>
+        <description>Mode applied when the extension is loaded. -1 (None) keeps the last used mode.</description>
       </key>
   </schema>
 </schemalist>

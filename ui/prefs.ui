@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="libadwaita" version="1.0"/>
+
+  <object class="AdwPreferencesPage" id="page_general">
+    <property name="title" translatable="yes">General</property>
+    <property name="icon-name">drive-harddisk-symbolic</property>
+
+    <child>
+      <object class="AdwPreferencesGroup">
+        <property name="title" translatable="yes">Display</property>
+        <property name="description" translatable="yes">Choose what is shown in the top panel. Clicking the indicator also cycles through the modes.</property>
+
+        <child>
+          <object class="AdwComboRow" id="row_mode">
+            <property name="title" translatable="yes">Mode</property>
+            <property name="subtitle" translatable="yes">Currently active display mode</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item translatable="yes">Small LED, speed and icon</item>
+                  <item translatable="yes">Large LED, speed and icon</item>
+                  <item translatable="yes">Small LED and icon</item>
+                  <item translatable="yes">Large LED and icon</item>
+                  <item translatable="yes">Small LED and speed</item>
+                  <item translatable="yes">Speed only</item>
+                  <item translatable="yes">Small LED only</item>
+                  <item translatable="yes">Large LED only</item>
+                </items>
+              </object>
+            </property>
+          </object>
+        </child>
+
+        <child>
+          <object class="AdwComboRow" id="row_defaultmode">
+            <property name="title" translatable="yes">Default mode</property>
+            <property name="subtitle" translatable="yes">Mode applied when the extension is loaded. “None” keeps the last used mode.</property>
+            <property name="model">
+              <object class="GtkStringList">
+                <items>
+                  <item translatable="yes">None</item>
+                  <item translatable="yes">Small LED, speed and icon</item>
+                  <item translatable="yes">Large LED, speed and icon</item>
+                  <item translatable="yes">Small LED and icon</item>
+                  <item translatable="yes">Large LED and icon</item>
+                  <item translatable="yes">Small LED and speed</item>
+                  <item translatable="yes">Speed only</item>
+                  <item translatable="yes">Small LED only</item>
+                  <item translatable="yes">Large LED only</item>
+                </items>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
