@@ -28,7 +28,11 @@ Extension sources live in `harddiskledNG@lauinger-clan.de/`.
 - `./harddiskledng.sh check-version` / `update-version`: check or synchronize npm versions with metadata's `version-name`.
 - `./harddiskledng.sh setup-hooks`: enable the optional staged-version check before commits.
 
-Packaging requires `gnome-extensions`; version commands and hooks require Node.js/npm and `jq`; translation updates require gettext tools.
+Packaging requires `gnome-extensions` and gettext's `msgfmt`. Development checks use Node.js/npm, Bash, Git, and `jq`; CI uses Node.js 24. Translation updates require `xgettext`, `msgmerge`, and `msgattrib`.
+
+GitHub Actions runs lint, tests, version checks, and a Shexli report on pushes and pull requests to `main`.
+Pushing a new tag matching `v<version-name>` from metadata builds the ZIP, creates a GitHub release, and uploads to EGO using the repository secrets `EGO_USERNAME` and `EGO_PASSWORD`.
+Manual release-workflow runs provide a build artifact; EGO upload is optional through the `do_ego_upload` checkbox.
 
 ## Preferences
 

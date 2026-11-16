@@ -1,0 +1,79 @@
+name: Release Extension
+
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+        inputs:
+            do_ego_upload:
+                description: Upload this manual build to EGO
+                type: boolean
+                default: false
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        env:
+            EXTENSION_ZIP: harddiskledNG@lauinger-clan.de.shell-extension.zip
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+            - name: Check release version
+              shell: bash
+              run: |
+                  ./harddiskledng.sh check-version
+                  if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+                    release_version=$(jq -r '.["version-name"]' harddiskledNG@lauinger-clan.de/metadata.json)
+                    if [[ "$GITHUB_REF_NAME" != "v$release_version" ]]; then
+                      echo "::error::Tag must be v$release_version to match metadata.json."
+                      exit 1
+                    fi
+                  fi
+
+            - name: Install packaging dependencies
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y gnome-shell gettext libglib2.0-bin dbus jq unzip
+
+            - name: Build extension
+              run: dbus-run-session -- ./harddiskledng.sh zip
+
+            - name: Verify build output
+              run: |
+                  test -f "$EXTENSION_ZIP"
+                  unzip -tq "$EXTENSION_ZIP"
+
+            - name: Upload build artifact
+              if: github.event_name == 'workflow_dispatch'
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+              with:
+                  name: harddiskledng-extension
+                  path: ${{ env.EXTENSION_ZIP }}
+                  if-no-files-found: error
+
+            - name: Create GitHub release
+              if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  RELEASE_TAG: ${{ github.ref_name }}
+              run: >-
+                  gh release create "$RELEASE_TAG"
+                  --verify-tag
+                  --generate-notes
+                  "$EXTENSION_ZIP"
+
+            - name: Upload to EGO
+              if: >-
+                  (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+                  (github.event_name == 'workflow_dispatch' && inputs.do_ego_upload)
+              uses: fire-man-x/gnome-shell-extension-uploader@6e6c1e39b0eafe3269a272b92e0b04b3f7165555 # v2
+              with:
+                  gnome_username: ${{ secrets.EGO_USERNAME }}
+                  gnome_password: ${{ secrets.EGO_PASSWORD }}
+                  extension_zip_file: ${{ env.EXTENSION_ZIP }}

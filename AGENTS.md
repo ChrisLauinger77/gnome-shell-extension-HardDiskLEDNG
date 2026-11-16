@@ -54,6 +54,16 @@ future changes to the schema ID or path as settings migrations.
 - `docs/`: project screenshots.
 - `.githooks/`: optional Git hook and shared version helpers that synchronize
   npm versions with metadata's `version-name`.
+- `.github/ISSUE_TEMPLATE/`: bug-report and feature-request forms.
+- `.github/FUNDING.yml`: sponsorship links matching the extension's donations.
+- `.github/workflows/eslint.yml`: Node.js lint/tests/version checks, SARIF
+  reporting, and a separate Shexli review report.
+- `.github/workflows/release.yml`: tag-triggered GitHub/EGO releases and
+  manual builds with an optional EGO upload.
+- `.github/workflows/claude.yml`: Claude Code automation for `@claude`
+  mentions, using the repository's `CLAUDE_CODE_OAUTH_TOKEN` secret.
+- `.github/workflows/stale.yml`: weekly issue inactivity checks; pull-request
+  staleness is disabled.
 - `harddiskledng.sh`: root helper for packaging, installing, uploading,
   translation updates, version checks, and hook setup. Keep development
   commands in this script; the former `bin/` scripts have been removed.
@@ -88,8 +98,8 @@ changes that modify `package-lock.json`, particularly Renovate updates.
 
 Notes:
 
-- Packaging requires `gnome-extensions`; translation updates require gettext
-  tools such as `xgettext`, `msgmerge`, and `msgattrib`.
+- Packaging requires `gnome-extensions` and gettext's `msgfmt`; translation
+  updates require `xgettext`, `msgmerge`, and `msgattrib`.
 - Version commands require `jq`; version updates also require Node.js/npm.
   The tooling tests require Node.js/npm, Bash, Git, and `jq`.
 - Tests mock Shell actors and installation/upload commands. Passing them does
@@ -113,7 +123,7 @@ Notes:
   across metadata, the schema, and preferences.
 - Keep changes scoped. Avoid unrelated runtime cleanup because GNOME Shell
   extension regressions can be hard to diagnose.
-- Follow `.editorconfig` and `.prettierrc`: JavaScript, CSS, and JSON use
+- Follow `.editorconfig` and `.prettierrc`: JavaScript, CSS, JSON, and YAML use
   four-space indentation; other file types default to two spaces. JavaScript
   uses double quotes and semicolons.
 
@@ -159,6 +169,8 @@ Notes:
 Before finishing changes, run the validations that match the edit:
 
 - JavaScript changes: `npm run lint`.
+- GitHub Actions changes: run `actionlint .github/workflows/*.yml` and check
+  referenced helper paths, version checks, and archive names.
 - Disk sampling or display changes: run or extend `npm test`.
 - Helper script, version logic, or hook changes: run or extend `npm test` and
   run `./harddiskledng.sh check-version`.
@@ -188,6 +200,13 @@ state that clearly in the final response.
   version files together after synchronizing them.
 - The release artifact name is
   `harddiskledNG@lauinger-clan.de.shell-extension.zip`.
+- A new `v*` tag push triggers the release workflow. The tag must match
+  `v<version-name>` from metadata. It builds the archive, creates a GitHub
+  release, and uploads to EGO using repository secrets `EGO_USERNAME` and
+  `EGO_PASSWORD`.
+- Manual release-workflow runs publish a build artifact. EGO upload happens
+  only when `do_ego_upload` is selected; manual runs do not create a GitHub
+  release, including when the selected ref is an existing tag.
 - The root helper rebuilds the archive before installation or upload and
   stops when a command fails. Preserve these guarantees when changing it.
 - Do not commit generated extension archives or `gschemas.compiled` files
